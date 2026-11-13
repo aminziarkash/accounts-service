@@ -8,6 +8,9 @@ import com.az.accounts.domain.Customer;
 import com.az.accounts.domain.LedgerEntry;
 import jakarta.persistence.EntityManager;
 import java.math.BigDecimal;
+import java.util.List;
+import org.hibernate.SessionFactory;
+import org.hibernate.stat.Statistics;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
@@ -117,5 +120,34 @@ class AccountRepositoryTest {
         assertThat(lastPage.getContent())
                 .extracting(entry -> entry.getBalanceAfter().intValueExact())
                 .containsExactly(10);
+    }
+
+    @Test
+    void readingEntriesThenTheirAccountCausesNPlusOne() {
+        Customer customer = new Customer("n1@test.com", "N", "Plus");
+        customerRepository.save(customer);
+        for (int i = 0; i < 3; i++) {
+            Account account = new Account("USD");
+            customer.addAccount(account);
+            accountRepository.save(account);
+            ledgerEntryRepository.save(account.deposit(new BigDecimal("10")));
+            ledgerEntryRepository.save(account.deposit(new BigDecimal("20")));
+        }
+        entityManager.flush();
+        entityManager.clear();
+
+        Statistics stats =
+                entityManager
+                        .getEntityManagerFactory()
+                        .unwrap(SessionFactory.class)
+                        .getStatistics();
+        stats.setStatisticsEnabled(true);
+        stats.clear();
+
+        List<LedgerEntry> entries = ledgerEntryRepository.findAll();
+        entries.forEach(e -> e.getAccount().getCurrency()); // touches the lazy account
+
+        // 1 query for the entries + 1 per distinct account = 4
+        assertThat(stats.getPrepareStatementCount()).isEqualTo(4);
     }
 }
