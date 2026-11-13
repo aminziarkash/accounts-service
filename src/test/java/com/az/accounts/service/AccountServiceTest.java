@@ -13,7 +13,14 @@ import com.az.accounts.repository.AccountRepository;
 import com.az.accounts.repository.CustomerRepository;
 import com.az.accounts.repository.LedgerEntryRepository;
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -173,5 +180,41 @@ class AccountServiceTest {
 
         assertThatThrownBy(() -> accountService.transfer(accountId, 999_999L, new BigDecimal("5")))
                 .isInstanceOf(AccountNotFoundException.class);
+    }
+
+    @Test
+    void concurrentDepositsKeepBalanceAndLedgerConsistent() throws Exception {
+        int threads = 20;
+        int depositsPerThread = 5;
+        BigDecimal amount = new BigDecimal("1.00");
+        BigDecimal expected = amount.multiply(BigDecimal.valueOf(threads * depositsPerThread));
+
+        ExecutorService pool = Executors.newFixedThreadPool(threads);
+        CountDownLatch start = new CountDownLatch(1);
+        List<Future<Void>> futures = new ArrayList<>();
+        for (int t = 0; t < threads; t++) {
+            futures.add(
+                    pool.submit(() -> {
+                        start.await(); // all threads begin at the same moment
+                        for (int i = 0; i < depositsPerThread; i++) {
+                            accountService.deposit(accountId, amount);
+                        }
+                        return null;
+                    }));
+        }
+        start.countDown();
+        for (Future<Void> future : futures) {
+            future.get(30, TimeUnit.SECONDS); // rethrows any exception from a thread
+        }
+        pool.shutdown();
+
+        Account reloaded = accountRepository.findById(accountId).orElseThrow();
+        BigDecimal ledgerSum =
+                ledgerEntryRepository.findAll().stream()
+                        .map(LedgerEntry::getAmount)
+                        .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        assertThat(ledgerSum).isEqualByComparingTo(expected);
+        assertThat(reloaded.getBalance()).isEqualByComparingTo(expected);
     }
 }
