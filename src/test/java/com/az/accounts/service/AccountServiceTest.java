@@ -217,4 +217,43 @@ class AccountServiceTest {
         assertThat(ledgerSum).isEqualByComparingTo(expected);
         assertThat(reloaded.getBalance()).isEqualByComparingTo(expected);
     }
+
+    @Test
+    void oppositeTransfersDoNotDeadlockAndConserveMoney() throws Exception {
+        accountService.deposit(accountId, new BigDecimal("1000"));
+        accountService.deposit(otherAccountId, new BigDecimal("1000"));
+
+        int threads = 20;
+        ExecutorService pool = Executors.newFixedThreadPool(threads);
+        CountDownLatch start = new CountDownLatch(1);
+        List<Future<Void>> futures = new ArrayList<>();
+        for (int t = 0; t < threads; t++) {
+            boolean forward = t % 2 == 0; // half A to B, half B to A
+            futures.add(
+                    pool.submit(() -> {
+                        start.await();
+                        for (int i = 0; i < 10; i++) {
+                            if (forward) {
+                                accountService.transfer(accountId, otherAccountId, BigDecimal.ONE);
+                            } else {
+                                accountService.transfer(otherAccountId, accountId, BigDecimal.ONE);
+                            }
+                        }
+                        return null;
+                    }));
+        }
+        start.countDown();
+        for (Future<Void> future : futures) {
+            future.get(60, TimeUnit.SECONDS);
+        }
+        pool.shutdown();
+
+        BigDecimal total =
+                accountRepository
+                        .findById(accountId)
+                        .orElseThrow()
+                        .getBalance()
+                        .add(accountRepository.findById(otherAccountId).orElseThrow().getBalance());
+        assertThat(total).isEqualByComparingTo("2000");
+    }
 }
