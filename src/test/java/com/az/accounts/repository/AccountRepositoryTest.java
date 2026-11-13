@@ -1,6 +1,7 @@
 package com.az.accounts.repository;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 
 import com.az.accounts.TestcontainersConfiguration;
 import com.az.accounts.domain.Account;
@@ -9,6 +10,7 @@ import com.az.accounts.domain.LedgerEntry;
 import jakarta.persistence.EntityManager;
 import java.math.BigDecimal;
 import java.util.List;
+import org.hibernate.LazyInitializationException;
 import org.hibernate.SessionFactory;
 import org.hibernate.stat.Statistics;
 import org.junit.jupiter.api.Test;
@@ -161,11 +163,28 @@ class AccountRepositoryTest {
         entityManager.flush();
 
         account.deposit(new BigDecimal("100")); // no save() call
-        entityManager.flush();                  // flush writes the UPDATE
+        entityManager.flush(); // flush writes the UPDATE
         entityManager.clear();
 
         Account reloaded = accountRepository.findById(account.getId()).orElseThrow();
         assertThat(reloaded.getBalance()).isEqualByComparingTo("100");
     }
 
+    @Test
+    void touchingALazyRelationAfterClearThrows() {
+        Customer customer = new Customer("lazy@test.com", "Lazy", "Load");
+        customerRepository.save(customer);
+        Account account = new Account("USD");
+        customer.addAccount(account);
+        accountRepository.save(account);
+        LedgerEntry saved = ledgerEntryRepository.save(account.deposit(new BigDecimal("5")));
+        entityManager.flush();
+        entityManager.clear();
+
+        LedgerEntry entry = ledgerEntryRepository.findById(saved.getId()).orElseThrow();
+        entityManager.clear(); // detaches the entry and its uninitialized account proxy
+
+        assertThatThrownBy(() -> entry.getAccount().getCurrency())
+                .isInstanceOf(LazyInitializationException.class);
+    }
 }
