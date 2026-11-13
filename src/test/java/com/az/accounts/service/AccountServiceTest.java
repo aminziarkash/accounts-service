@@ -8,6 +8,7 @@ import com.az.accounts.domain.Account;
 import com.az.accounts.domain.Customer;
 import com.az.accounts.domain.LedgerEntry;
 import com.az.accounts.exception.AccountNotFoundException;
+import com.az.accounts.exception.InsufficientFundsException;
 import com.az.accounts.repository.AccountRepository;
 import com.az.accounts.repository.CustomerRepository;
 import com.az.accounts.repository.LedgerEntryRepository;
@@ -75,6 +76,48 @@ class AccountServiceTest {
     @Test
     void unknownAccountThrows() {
         assertThatThrownBy(() -> accountService.deposit(999_999L, new BigDecimal("10")))
+                .isInstanceOf(AccountNotFoundException.class);
+    }
+
+    @Test
+    void withdrawReducesBalanceAndWritesLedgerEntry() {
+        accountService.deposit(accountId, new BigDecimal("100"));
+
+        accountService.withdraw(accountId, new BigDecimal("30"));
+
+        Account reloaded = accountRepository.findById(accountId).orElseThrow();
+        assertThat(reloaded.getBalance()).isEqualByComparingTo("70");
+        Page<LedgerEntry> entries =
+                ledgerEntryRepository.findByAccountIdOrderByCreatedAtDesc(
+                        accountId, PageRequest.of(0, 10));
+        assertThat(entries.getTotalElements()).isEqualTo(2);
+    }
+
+    @Test
+    void withdrawingMoreThanBalanceChangesNothing() {
+        accountService.deposit(accountId, new BigDecimal("50"));
+
+        assertThatThrownBy(() -> accountService.withdraw(accountId, new BigDecimal("50.01")))
+                .isInstanceOf(InsufficientFundsException.class);
+
+        Account reloaded = accountRepository.findById(accountId).orElseThrow();
+        assertThat(reloaded.getBalance()).isEqualByComparingTo("50");
+        assertThat(ledgerEntryRepository.count()).isEqualTo(1); // only the deposit
+    }
+
+    @Test
+    void withdrawingTheWholeBalanceIsAllowed() {
+        accountService.deposit(accountId, new BigDecimal("50"));
+
+        accountService.withdraw(accountId, new BigDecimal("50"));
+
+        Account reloaded = accountRepository.findById(accountId).orElseThrow();
+        assertThat(reloaded.getBalance()).isEqualByComparingTo("0");
+    }
+
+    @Test
+    void withdrawFromUnknownAccountThrows() {
+        assertThatThrownBy(() -> accountService.withdraw(999_999L, new BigDecimal("10")))
                 .isInstanceOf(AccountNotFoundException.class);
     }
 }
