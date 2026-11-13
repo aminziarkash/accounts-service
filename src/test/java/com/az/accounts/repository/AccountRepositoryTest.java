@@ -150,4 +150,22 @@ class AccountRepositoryTest {
         // 1 query for the entries + 1 per distinct account = 4
         assertThat(stats.getPrepareStatementCount()).isEqualTo(4);
     }
+
+    @Test
+    void changesToAManagedEntityArePersistedWithoutSave() {
+        Customer customer = new Customer("dirty@test.com", "Dirty", "Check");
+        customerRepository.save(customer);
+        Account account = new Account("USD");
+        customer.addAccount(account);
+        accountRepository.save(account);
+        entityManager.flush();
+
+        account.deposit(new BigDecimal("100")); // no save() call
+        entityManager.flush();                  // flush writes the UPDATE
+        entityManager.clear();
+
+        Account reloaded = accountRepository.findById(account.getId()).orElseThrow();
+        assertThat(reloaded.getBalance()).isEqualByComparingTo("100");
+    }
+
 }
