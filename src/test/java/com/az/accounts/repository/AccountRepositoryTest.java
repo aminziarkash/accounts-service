@@ -55,4 +55,67 @@ class AccountRepositoryTest {
                         account.getId(), PageRequest.of(0, 20));
         assertThat(entries.getTotalElements()).isEqualTo(2);
     }
+
+    @Test
+    public void findAccountsByCustomerId() {
+        Customer customer1 = new Customer("customer1@test.com", "Customer", "One");
+        customerRepository.save(customer1);
+        Customer customer2 = new Customer("customer2@test.com", "Customer", "Two");
+        customerRepository.save(customer2);
+        Customer customer3 = new Customer("customer3@test.com", "Customer", "Three");
+        customerRepository.save(customer3);
+
+        Account account1Customer1 = new Account("USD");
+        Account account2Customer1 = new Account("USD");
+        customer1.addAccount(account1Customer1);
+        accountRepository.save(account1Customer1);
+        customer1.addAccount(account2Customer1);
+        accountRepository.save(account2Customer1);
+
+        Account account1Customer2 = new Account("EUR");
+        customer2.addAccount(account1Customer2);
+        accountRepository.save(account1Customer2);
+
+        entityManager.flush();
+        entityManager.clear();
+
+        assertThat(accountRepository.findByCustomerId(customer1.getId()))
+                .containsExactlyInAnyOrder(account1Customer1, account2Customer1);
+        assertThat(accountRepository.findByCustomerId(customer2.getId()))
+                .containsExactly(account1Customer2);
+        assertThat(accountRepository.findByCustomerId(customer3.getId())).isEmpty();
+    }
+
+    @Test
+    void returnsLedgerEntriesNewestFirstWithPaging() throws InterruptedException {
+        Customer customer = new Customer("paging@test.com", "Paging", "Test");
+        customerRepository.save(customer);
+        Account account = new Account("USD");
+        customer.addAccount(account);
+        accountRepository.save(account);
+
+        // deposits of 10, 20, 30, 40, 50 give balances 10, 30, 60, 100, 150
+        for (int amount = 10; amount <= 50; amount += 10) {
+            ledgerEntryRepository.save(account.deposit(new BigDecimal(amount)));
+            entityManager.flush();
+            Thread.sleep(5); // make createdAt differ so the ordering is deterministic
+        }
+        entityManager.clear();
+
+        Page<LedgerEntry> firstPage =
+                ledgerEntryRepository.findByAccountIdOrderByCreatedAtDesc(
+                        account.getId(), PageRequest.of(0, 2));
+        assertThat(firstPage.getContent())
+                .extracting(entry -> entry.getBalanceAfter().intValueExact())
+                .containsExactly(150, 100);
+        assertThat(firstPage.getTotalElements()).isEqualTo(5);
+        assertThat(firstPage.getTotalPages()).isEqualTo(3);
+
+        Page<LedgerEntry> lastPage =
+                ledgerEntryRepository.findByAccountIdOrderByCreatedAtDesc(
+                        account.getId(), PageRequest.of(2, 2));
+        assertThat(lastPage.getContent())
+                .extracting(entry -> entry.getBalanceAfter().intValueExact())
+                .containsExactly(10);
+    }
 }
