@@ -13,6 +13,7 @@ import com.az.accounts.repository.AccountRepository;
 import com.az.accounts.repository.CustomerRepository;
 import com.az.accounts.repository.LedgerEntryRepository;
 import java.math.BigDecimal;
+import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -32,6 +33,7 @@ class AccountServiceTest {
     @Autowired private LedgerEntryRepository ledgerEntryRepository;
 
     private Long accountId;
+    private Long otherAccountId;
 
     @BeforeEach
     void setUp() {
@@ -40,6 +42,10 @@ class AccountServiceTest {
         Account account = new Account("USD");
         customer.addAccount(account);
         accountId = accountRepository.save(account).getId();
+
+        Account other = new Account("USD");
+        customer.addAccount(other);
+        otherAccountId = accountRepository.save(other).getId();
     }
 
     @AfterEach
@@ -118,6 +124,54 @@ class AccountServiceTest {
     @Test
     void withdrawFromUnknownAccountThrows() {
         assertThatThrownBy(() -> accountService.withdraw(999_999L, new BigDecimal("10")))
+                .isInstanceOf(AccountNotFoundException.class);
+    }
+
+    @Test
+    void transferMovesMoneyAndWritesTwoLinkedEntries() {
+        accountService.deposit(accountId, new BigDecimal("100"));
+
+        UUID ref = accountService.transfer(accountId, otherAccountId, new BigDecimal("40"));
+
+        assertThat(accountRepository.findById(accountId).orElseThrow().getBalance())
+                .isEqualByComparingTo("60");
+        assertThat(accountRepository.findById(otherAccountId).orElseThrow().getBalance())
+                .isEqualByComparingTo("40");
+        long linked =
+                ledgerEntryRepository.findAll().stream()
+                        .filter(e -> ref.equals(e.getTransferReference()))
+                        .count();
+        assertThat(linked).isEqualTo(2);
+    }
+
+    @Test
+    void transferWithInsufficientFundsChangesNothing() {
+        accountService.deposit(accountId, new BigDecimal("10"));
+
+        assertThatThrownBy(() ->
+                        accountService.transfer(accountId, otherAccountId, new BigDecimal("50")))
+                .isInstanceOf(InsufficientFundsException.class);
+
+        assertThat(accountRepository.findById(accountId).orElseThrow().getBalance())
+                .isEqualByComparingTo("10");
+        assertThat(accountRepository.findById(otherAccountId).orElseThrow().getBalance())
+                .isEqualByComparingTo("0");
+        assertThat(ledgerEntryRepository.count()).isEqualTo(1); // only the first deposit
+    }
+
+    @Test
+    void transferToTheSameAccountIsRejected() {
+        accountService.deposit(accountId, new BigDecimal("10"));
+
+        assertThatThrownBy(() -> accountService.transfer(accountId, accountId, new BigDecimal("5")))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void transferToAnUnknownAccountThrows() {
+        accountService.deposit(accountId, new BigDecimal("10"));
+
+        assertThatThrownBy(() -> accountService.transfer(accountId, 999_999L, new BigDecimal("5")))
                 .isInstanceOf(AccountNotFoundException.class);
     }
 }

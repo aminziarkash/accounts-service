@@ -14,6 +14,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.Currency;
 import java.util.Objects;
+import java.util.UUID;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
@@ -67,22 +68,32 @@ public class Account {
     }
 
     public LedgerEntry deposit(BigDecimal amount) {
+        return deposit(amount, null);
+    }
+
+    public LedgerEntry deposit(BigDecimal amount, UUID transferReference) {
         requirePositiveAmount(amount);
         BigDecimal newBalance = balance.add(amount);
         LedgerEntry entry =
-                new LedgerEntry(this, LedgerEntryType.DEPOSIT, amount, newBalance, null);
+                new LedgerEntry(
+                        this, LedgerEntryType.DEPOSIT, amount, newBalance, transferReference);
         balance = newBalance;
         return entry;
     }
 
     public LedgerEntry withdraw(BigDecimal amount) {
+        return withdraw(amount, null);
+    }
+
+    public LedgerEntry withdraw(BigDecimal amount, UUID transferReference) {
         requirePositiveAmount(amount);
         if (amount.compareTo(balance) > 0) {
             throw new InsufficientFundsException(id, balance, amount);
         }
         BigDecimal newBalance = balance.subtract(amount);
         LedgerEntry entry =
-                new LedgerEntry(this, LedgerEntryType.WITHDRAWAL, amount, newBalance, null);
+                new LedgerEntry(
+                        this, LedgerEntryType.WITHDRAWAL, amount, newBalance, transferReference);
         balance = newBalance;
         return entry;
     }
