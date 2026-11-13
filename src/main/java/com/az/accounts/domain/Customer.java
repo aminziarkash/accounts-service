@@ -95,6 +95,11 @@ public class Customer {
         return Collections.unmodifiableList(accounts);
     }
 
+    public void changeName(String firstName, String lastName) {
+        this.firstName = Objects.requireNonNull(firstName, "firstName");
+        this.lastName = Objects.requireNonNull(lastName, "lastName");
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) {
