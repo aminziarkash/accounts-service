@@ -30,4 +30,14 @@ public class AccountService {
         LedgerEntry entry = account.deposit(amount);
         return ledgerEntryRepository.save(entry);
     }
+
+    @Transactional
+    public LedgerEntry withdraw(Long accountId, BigDecimal amount) {
+        Account account =
+                accountRepository
+                        .findById(accountId)
+                        .orElseThrow(() -> new AccountNotFoundException(accountId));
+        LedgerEntry entry = account.withdraw(amount);
+        return ledgerEntryRepository.save(entry);
+    }
 }
