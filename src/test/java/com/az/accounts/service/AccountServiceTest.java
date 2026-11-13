@@ -1,0 +1,80 @@
+package com.az.accounts.service;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+import com.az.accounts.TestcontainersConfiguration;
+import com.az.accounts.domain.Account;
+import com.az.accounts.domain.Customer;
+import com.az.accounts.domain.LedgerEntry;
+import com.az.accounts.exception.AccountNotFoundException;
+import com.az.accounts.repository.AccountRepository;
+import com.az.accounts.repository.CustomerRepository;
+import com.az.accounts.repository.LedgerEntryRepository;
+import java.math.BigDecimal;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+
+@SpringBootTest
+@Import(TestcontainersConfiguration.class)
+class AccountServiceTest {
+
+    @Autowired private AccountService accountService;
+    @Autowired private AccountRepository accountRepository;
+    @Autowired private CustomerRepository customerRepository;
+    @Autowired private LedgerEntryRepository ledgerEntryRepository;
+
+    private Long accountId;
+
+    @BeforeEach
+    void setUp() {
+        Customer customer =
+                customerRepository.save(new Customer("service@test.com", "Service", "Test"));
+        Account account = new Account("USD");
+        customer.addAccount(account);
+        accountId = accountRepository.save(account).getId();
+    }
+
+    @AfterEach
+    void cleanUp() {
+        ledgerEntryRepository.deleteAllInBatch();
+        accountRepository.deleteAllInBatch();
+        customerRepository.deleteAllInBatch();
+    }
+
+    @Test
+    void depositUpdatesBalanceAndWritesLedgerEntryTogether() {
+        accountService.deposit(accountId, new BigDecimal("100"));
+
+        Account reloaded = accountRepository.findById(accountId).orElseThrow();
+        assertThat(reloaded.getBalance()).isEqualByComparingTo("100");
+
+        Page<LedgerEntry> entries =
+                ledgerEntryRepository.findByAccountIdOrderByCreatedAtDesc(
+                        accountId, PageRequest.of(0, 10));
+        assertThat(entries.getTotalElements()).isEqualTo(1);
+        assertThat(entries.getContent().get(0).getBalanceAfter()).isEqualByComparingTo("100");
+    }
+
+    @Test
+    void invalidAmountChangesNothing() {
+        assertThatThrownBy(() -> accountService.deposit(accountId, new BigDecimal("-5")))
+                .isInstanceOf(IllegalArgumentException.class);
+
+        Account reloaded = accountRepository.findById(accountId).orElseThrow();
+        assertThat(reloaded.getBalance()).isEqualByComparingTo("0");
+        assertThat(ledgerEntryRepository.count()).isZero();
+    }
+
+    @Test
+    void unknownAccountThrows() {
+        assertThatThrownBy(() -> accountService.deposit(999_999L, new BigDecimal("10")))
+                .isInstanceOf(AccountNotFoundException.class);
+    }
+}
