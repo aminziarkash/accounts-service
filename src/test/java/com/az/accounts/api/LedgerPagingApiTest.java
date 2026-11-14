@@ -11,6 +11,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.az.accounts.service.AccountService;
 import com.az.accounts.service.CustomerService;
+import com.az.accounts.service.IdempotentAccountService;
 import com.az.accounts.service.IdempotentTransferService;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -29,6 +30,7 @@ class LedgerPagingApiTest {
 
     @Autowired private MockMvc mockMvc;
     @MockitoBean private IdempotentTransferService transferService;
+    @MockitoBean private IdempotentAccountService idempotentAccountService;
     @MockitoBean private CustomerService customerService;
     @MockitoBean private AccountService accountService;
 

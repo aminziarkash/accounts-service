@@ -10,6 +10,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.az.accounts.exception.IdempotencyKeyReuseException;
 import com.az.accounts.service.AccountService;
 import com.az.accounts.service.CustomerService;
+import com.az.accounts.service.IdempotentAccountService;
 import com.az.accounts.service.IdempotentTransferService;
 import java.math.BigDecimal;
 import java.util.UUID;
@@ -33,6 +34,7 @@ class TransferApiTest {
     @MockitoBean private CustomerService customerService;
     @MockitoBean private AccountService accountService;
     @MockitoBean private IdempotentTransferService transferService;
+    @MockitoBean private IdempotentAccountService idempotentAccountService;
 
     @Test
     void transferWithKeyReturns201AndTheReference() throws Exception {
