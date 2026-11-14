@@ -3,6 +3,7 @@ package com.az.accounts.api;
 import com.az.accounts.api.dto.TransferRequest;
 import com.az.accounts.api.dto.TransferResponse;
 import com.az.accounts.service.AccountService;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -22,7 +23,7 @@ public class TransferController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public TransferResponse transfer(@RequestBody TransferRequest request) {
+    public TransferResponse transfer(@Valid @RequestBody TransferRequest request) {
         return new TransferResponse(
                 accountService.transfer(
                         request.fromAccountId(), request.toAccountId(), request.amount()));
