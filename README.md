@@ -88,6 +88,7 @@ docker build -t accounts-service .
 docker run --rm -p 8080:8080 \
   -e SPRING_DATASOURCE_URL=jdbc:postgresql://host.docker.internal:5433/accounts \
   -e SPRING_DATASOURCE_USERNAME=accounts -e SPRING_DATASOURCE_PASSWORD=accounts \
+  -e KEYCLOAK_JWK_SET_URI=http://host.docker.internal:8180/realms/accounts/protocol/openid-connect/certs \
   accounts-service
 ```
 
@@ -102,6 +103,9 @@ the domain model (`domain`). Entities never leave the service layer: services ma
 domain and are translated to HTTP in one `@RestControllerAdvice`. A servlet filter adds a correlation id to every
 request, and deposits, withdrawals and transfers are made idempotent with one key table, written in the same
 transaction as the money movement.
+The service is an OAuth2 resource server: every `/api/**` call needs a bearer token signed by Keycloak. Health probes
+and the API docs are public, everything else is denied by default. Realm roles in the token become Spring roles, and
+401 and 403 answers use the same problem+json format as every other error.
 The layer rules are enforced by ArchUnit tests, so the build fails if a controller touches an entity or a repository.
 
 [Add the diagram here once built: a Mermaid diagram of accounts-service, PostgreSQL, outbox relay, Kafka, notifications-service.]
