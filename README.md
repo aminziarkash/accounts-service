@@ -106,6 +106,10 @@ transaction as the money movement.
 The service is an OAuth2 resource server: every `/api/**` call needs a bearer token signed by Keycloak. Health probes
 and the API docs are public, everything else is denied by default. Realm roles in the token become Spring roles, and
 401 and 403 answers use the same problem+json format as every other error.
+A valid token only proves who you are, so one `AccessPolicy` also checks that the customer or account is yours (admins
+may see everything). Each customer stores the Keycloak id of its owner, taken from the token and never from the request.
+Someone else's customer or account answers `404`, the same as an id that does not exist, so ids cannot be probed.
+You can send money to anyone's account, but only out of your own.
 The layer rules are enforced by ArchUnit tests, so the build fails if a controller touches an entity or a repository.
 
 [Add the diagram here once built: a Mermaid diagram of accounts-service, PostgreSQL, outbox relay, Kafka, notifications-service.]
