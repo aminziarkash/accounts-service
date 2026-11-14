@@ -3,3 +3,8 @@ spring:
     url: jdbc:postgresql://localhost:${POSTGRES_PORT:5433}/${POSTGRES_DB:accounts}
     username: ${POSTGRES_USER:accounts}
     password: ${POSTGRES_PASSWORD:accounts}
+
+app:
+  cors:
+    allowed-origins:
+      - http://localhost:3000
