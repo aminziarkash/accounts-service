@@ -8,6 +8,7 @@ import com.az.accounts.api.dto.PageResponse;
 import com.az.accounts.api.mapper.AccountMapper;
 import com.az.accounts.domain.Account;
 import com.az.accounts.service.AccountService;
+import jakarta.validation.Valid;
 import java.net.URI;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
@@ -35,7 +36,7 @@ public class AccountController {
     }
 
     @PostMapping
-    public ResponseEntity<AccountResponse> open(@RequestBody OpenAccountRequest request) {
+    public ResponseEntity<AccountResponse> open(@Valid @RequestBody OpenAccountRequest request) {
         Account account = accountService.openAccount(request.customerId(), request.currency());
         URI location =
                 ServletUriComponentsBuilder.fromCurrentRequest()
@@ -52,13 +53,15 @@ public class AccountController {
 
     @PostMapping("/{id}/deposits")
     @ResponseStatus(HttpStatus.CREATED)
-    public LedgerEntryResponse deposit(@PathVariable Long id, @RequestBody AmountRequest request) {
+    public LedgerEntryResponse deposit(
+            @PathVariable Long id, @Valid @RequestBody AmountRequest request) {
         return mapper.toResponse(accountService.deposit(id, request.amount()));
     }
 
     @PostMapping("/{id}/withdrawals")
     @ResponseStatus(HttpStatus.CREATED)
-    public LedgerEntryResponse withdraw(@PathVariable Long id, @RequestBody AmountRequest request) {
+    public LedgerEntryResponse withdraw(
+            @PathVariable Long id, @Valid @RequestBody AmountRequest request) {
         return mapper.toResponse(accountService.withdraw(id, request.amount()));
     }
 

@@ -5,6 +5,7 @@ import com.az.accounts.api.dto.CustomerResponse;
 import com.az.accounts.api.mapper.AccountMapper;
 import com.az.accounts.domain.Customer;
 import com.az.accounts.service.CustomerService;
+import jakarta.validation.Valid;
 import java.net.URI;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -28,7 +29,8 @@ public class CustomerController {
     }
 
     @PostMapping
-    public ResponseEntity<CustomerResponse> create(@RequestBody CreateCustomerRequest request) {
+    public ResponseEntity<CustomerResponse> create(
+            @Valid @RequestBody CreateCustomerRequest request) {
         Customer created =
                 customerService.create(request.email(), request.firstName(), request.lastName());
         URI location =
