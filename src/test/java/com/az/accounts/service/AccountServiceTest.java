@@ -44,6 +44,7 @@ class AccountServiceTest {
 
     @BeforeEach
     void setUp() {
+        cleanUp();
         Customer customer =
                 customerRepository.save(new Customer("service@test.com", "Service", "Test"));
         Account account = new Account("USD");
