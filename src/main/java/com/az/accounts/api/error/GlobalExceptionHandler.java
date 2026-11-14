@@ -3,6 +3,7 @@ package com.az.accounts.api.error;
 import com.az.accounts.exception.AccountNotFoundException;
 import com.az.accounts.exception.CustomerNotFoundException;
 import com.az.accounts.exception.DuplicateEmailException;
+import com.az.accounts.exception.IdempotencyKeyReuseException;
 import com.az.accounts.exception.InsufficientFundsException;
 import java.util.List;
 import java.util.Map;
@@ -82,7 +83,11 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     }
 
     // 422: well-formed request, but a business rule says no
-    @ExceptionHandler({InsufficientFundsException.class, IllegalArgumentException.class})
+    @ExceptionHandler({
+            InsufficientFundsException.class,
+            IllegalArgumentException.class,
+            IdempotencyKeyReuseException.class
+    })
     public ProblemDetail handleBusinessRule(RuntimeException ex) {
         return problem(HttpStatus.UNPROCESSABLE_ENTITY, "Business rule violated", ex.getMessage());
     }
