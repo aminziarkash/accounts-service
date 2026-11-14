@@ -1,5 +1,6 @@
 package com.az.accounts.service;
 
+import com.az.accounts.audit.Audited;
 import com.az.accounts.domain.Account;
 import com.az.accounts.domain.Customer;
 import com.az.accounts.domain.LedgerEntry;
@@ -31,6 +32,7 @@ public class AccountService {
         this.customerRepository = customerRepository;
     }
 
+    @Audited("DEPOSIT")
     @Transactional
     public LedgerEntry deposit(Long accountId, BigDecimal amount) {
         Account account = lockAccount(accountId);
@@ -38,6 +40,7 @@ public class AccountService {
         return ledgerEntryRepository.save(entry);
     }
 
+    @Audited("WITHDRAW")
     @Transactional
     public LedgerEntry withdraw(Long accountId, BigDecimal amount) {
         Account account = lockAccount(accountId);
@@ -45,6 +48,7 @@ public class AccountService {
         return ledgerEntryRepository.save(entry);
     }
 
+    @Audited("TRANSFER")
     @Transactional
     public UUID transfer(Long fromId, Long toId, BigDecimal amount) {
         if (fromId.equals(toId)) {
