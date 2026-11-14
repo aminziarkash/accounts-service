@@ -1,6 +1,10 @@
 spring:
   application:
     name: accounts-service
+  datasource:
+    hikari:
+      # wait at most 3s for a row lock instead of forever; the API answers 503 + Retry-After
+      connection-init-sql: SET lock_timeout = '3s'
   jpa:
     open-in-view: false
     hibernate:
