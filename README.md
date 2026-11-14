@@ -22,7 +22,8 @@ Built:
   return read models mapped with MapStruct, so entities never reach the web layer. The ledger endpoint caps the page
   size and only sorts by whitelisted fields.
 - **Safe retries.** Deposits, withdrawals and transfers need an `Idempotency-Key`. The key is stored in PostgreSQL in the same transaction as the
-  transfer, so a repeated request returns the first result and money moves once, even for concurrent duplicates.
+  transfer, so a repeated request returns the first result and money moves once, even for concurrent duplicates. Keys expire
+  after 24 hours and a scheduled job deletes them.
 - **Cross-cutting basics.** A correlation id filter, request timing interceptor, configurable CORS and an `@Audited`
   aspect for money operations.
 - **Documented API.** OpenAPI docs and Swagger UI generated with springdoc.
