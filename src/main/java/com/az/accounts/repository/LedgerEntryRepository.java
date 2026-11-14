@@ -15,4 +15,6 @@ public interface LedgerEntryRepository extends JpaRepository<LedgerEntry, Long> 
     List<LedgerEntry> findAllWithAccount();
 
     Page<LedgerEntry> findByAccountIdOrderByCreatedAtDesc(Long accountId, Pageable pageable);
+
+    Page<LedgerEntry> findByAccountId(Long accountId, Pageable pageable);
 }

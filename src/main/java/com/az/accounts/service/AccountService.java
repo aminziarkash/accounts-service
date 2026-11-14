@@ -89,7 +89,7 @@ public class AccountService {
         if (!accountRepository.existsById(accountId)) {
             throw new AccountNotFoundException(accountId);
         }
-        return ledgerEntryRepository.findByAccountIdOrderByCreatedAtDesc(accountId, pageable);
+        return ledgerEntryRepository.findByAccountId(accountId, pageable);
     }
 
     private Account lockAccount(Long id) {
