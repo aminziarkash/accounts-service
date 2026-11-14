@@ -4,6 +4,7 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -11,6 +12,7 @@ import com.az.accounts.domain.Customer;
 import com.az.accounts.exception.AccountNotFoundException;
 import com.az.accounts.exception.DuplicateEmailException;
 import com.az.accounts.exception.InsufficientFundsException;
+import com.az.accounts.exception.InvalidOperationException;
 import com.az.accounts.service.AccountService;
 import com.az.accounts.service.CustomerService;
 import com.az.accounts.service.IdempotentAccountService;
@@ -19,6 +21,7 @@ import java.math.BigDecimal;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.dao.CannotAcquireLockException;
 import org.springframework.http.MediaType;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -119,6 +122,35 @@ class ApiErrorHandlingTest {
                                 .content("{\"amount\":\"50.00\"}"))
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(jsonPath("$.title").value("Business rule violated"));
+    }
+
+    @Test
+    void businessRuleViolationReturns422() throws Exception {
+        when(customerService.get(1L)).thenThrow(new InvalidOperationException("Cannot do that"));
+
+        mockMvc.perform(get("/api/v1/customers/1"))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.detail").value("Cannot do that"));
+    }
+
+    @Test
+    void strayIllegalArgumentExceptionIsOurBugAndReturns500() throws Exception {
+        when(customerService.get(1L)).thenThrow(new IllegalArgumentException("library said no"));
+
+        mockMvc.perform(get("/api/v1/customers/1"))
+                .andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.detail").value("An unexpected error occurred"));
+    }
+
+    @Test
+    void lockTimeoutReturns503WithRetryAfter() throws Exception {
+        when(accountService.getAccount(1L))
+                .thenThrow(new CannotAcquireLockException("lock timeout"));
+
+        mockMvc.perform(get("/api/v1/accounts/1"))
+                .andExpect(status().isServiceUnavailable())
+                .andExpect(header().string("Retry-After", "1"))
+                .andExpect(jsonPath("$.title").value("Temporarily busy"));
     }
 
     @Test

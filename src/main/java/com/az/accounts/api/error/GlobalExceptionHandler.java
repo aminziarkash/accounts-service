@@ -5,12 +5,14 @@ import com.az.accounts.exception.CustomerNotFoundException;
 import com.az.accounts.exception.DuplicateEmailException;
 import com.az.accounts.exception.IdempotencyKeyReuseException;
 import com.az.accounts.exception.InsufficientFundsException;
+import com.az.accounts.exception.InvalidOperationException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
@@ -130,6 +132,21 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                 "The resource was changed by someone else. Reload it and try again.");
     }
 
+    // 503: the row lock could not be had in time (or we lost a deadlock). Nothing was changed, so
+    // the client can safely retry.
+    @ExceptionHandler(PessimisticLockingFailureException.class)
+    public ResponseEntity<ProblemDetail> handleLockContention(
+            PessimisticLockingFailureException ex) {
+        log.warn("Lock contention", ex);
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                .header(HttpHeaders.RETRY_AFTER, "1")
+                .body(
+                        problem(
+                                HttpStatus.SERVICE_UNAVAILABLE,
+                                "Temporarily busy",
+                                "The account is busy. Try again shortly."));
+    }
+
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ProblemDetail handleIntegrityViolation(DataIntegrityViolationException ex) {
         log.warn("Data integrity violation", ex);
@@ -139,7 +156,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     // 422: well-formed request, but a business rule says no
     @ExceptionHandler({
         InsufficientFundsException.class,
-        IllegalArgumentException.class,
+        InvalidOperationException.class,
         IdempotencyKeyReuseException.class
     })
     public ProblemDetail handleBusinessRule(RuntimeException ex) {

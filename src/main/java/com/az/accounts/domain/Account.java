@@ -1,6 +1,7 @@
 package com.az.accounts.domain;
 
 import com.az.accounts.exception.InsufficientFundsException;
+import com.az.accounts.exception.InvalidOperationException;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -51,7 +52,7 @@ public class Account {
         try {
             this.currency = Currency.getInstance(currency).getCurrencyCode();
         } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException("Unknown currency code: " + currency, e);
+            throw new InvalidOperationException("Unknown currency code: " + currency, e);
         }
         this.balance = BigDecimal.ZERO;
     }
@@ -59,10 +60,10 @@ public class Account {
     private static void requirePositiveAmount(BigDecimal amount) {
         Objects.requireNonNull(amount, "amount");
         if (amount.signum() <= 0) {
-            throw new IllegalArgumentException("Amount must be greater than 0: " + amount);
+            throw new InvalidOperationException("Amount must be greater than 0: " + amount);
         }
         if (amount.stripTrailingZeros().scale() > 2) {
-            throw new IllegalArgumentException(
+            throw new InvalidOperationException(
                     "Amount cannot have more than 2 decimal places: " + amount);
         }
     }

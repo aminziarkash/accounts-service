@@ -6,6 +6,7 @@ import com.az.accounts.domain.Customer;
 import com.az.accounts.domain.LedgerEntry;
 import com.az.accounts.exception.AccountNotFoundException;
 import com.az.accounts.exception.CustomerNotFoundException;
+import com.az.accounts.exception.InvalidOperationException;
 import com.az.accounts.repository.AccountRepository;
 import com.az.accounts.repository.CustomerRepository;
 import com.az.accounts.repository.LedgerEntryRepository;
@@ -58,7 +59,7 @@ public class AccountService {
     @Transactional
     public UUID transfer(Long fromId, Long toId, BigDecimal amount) {
         if (fromId.equals(toId)) {
-            throw new IllegalArgumentException("Cannot transfer to the same account");
+            throw new InvalidOperationException("Cannot transfer to the same account");
         }
         // lock in a fixed order (lower id first) so opposite transfers cannot deadlock
         Long firstId = Math.min(fromId, toId);
@@ -69,7 +70,7 @@ public class AccountService {
         Account to = fromId.equals(firstId) ? second : first;
 
         if (!from.getCurrency().equals(to.getCurrency())) {
-            throw new IllegalArgumentException("Currency mismatch between accounts");
+            throw new InvalidOperationException("Currency mismatch between accounts");
         }
 
         UUID transferReference = UUID.randomUUID();
