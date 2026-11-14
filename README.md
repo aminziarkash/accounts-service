@@ -1,51 +1,87 @@
 # accounts-service
 
-Event-driven banking accounts service built with Spring Boot 4, PostgreSQL, Kafka and Testcontainers: ledger, idempotent transfers, outbox, JWT security and caching
+Banking accounts service built with Spring Boot 4, PostgreSQL and Testcontainers: ledger, safe money movement under
+concurrency, and a validated REST API. Idempotent transfers, a transactional outbox with Kafka, JWT security and caching
+are planned.
 
-![CI](https://github.com/<your-username>/accounts-service/actions/workflows/ci.yml/badge.svg)
+![CI](https://github.com/aminziarkash/accounts-service/actions/workflows/ci.yml/badge.svg)
 
-I built this to practice the problems that come up in real backend work: moving money correctly under concurrency, publishing events reliably, and proving behavior with tests against real infrastructure. Everything in here is code I wrote and can explain.
+I built this to practice the problems that come up in real backend work: moving money correctly under concurrency,
+publishing events reliably, and proving behavior with tests against real infrastructure. Everything in here is code I
+wrote and can explain.
 
 ## What it shows
 
-- **Correct money movement.** Deposit, withdraw and transfer with a ledger entry for every balance change. Pessimistic locking with ordered locks for transfers, optimistic locking for profiles. See ADR-001.
-- **Safe retries.** Transfers accept an `Idempotency-Key`, so a repeated request moves money once.
-- **Reliable events.** A transactional outbox publishes domain events to Kafka. Consumers are idempotent, failures go to a dead-letter topic. See ADR-003.
-- **Real tests.** PostgreSQL and Kafka run in Testcontainers, no H2. Concurrency tests prove there are no lost updates or deadlocks.
-- **Secure by default.** Stateless JWT resource server with ownership checks.
+Built:
+
+- **Correct money movement.** Deposit, withdraw and transfer with a ledger entry for every balance change, saved in the
+  same transaction. Pessimistic locking with ordered locks for balances, optimistic locking for profiles. See ADR-001.
+- **Real tests.** PostgreSQL runs in Testcontainers, no H2. Concurrency tests prove there are no lost updates or
+  deadlocks.
+- **A clean REST API.** Thin controllers, DTO records with MapStruct, Bean Validation and one error format (RFC 9457
+  `ProblemDetail`).
+
+Planned:
+
+- **Safe retries.** Transfers accepting an `Idempotency-Key`, so a repeated request moves money once.
+- **Reliable events.** A transactional outbox publishing domain events to Kafka, with idempotent consumers and a
+  dead-letter topic.
+- **Secure by default.** A stateless JWT resource server with ownership checks.
 
 ## Stack
 
-Java 21, Spring Boot 4, Spring Data JPA, PostgreSQL 16, Liquibase, Kafka, Caffeine, Resilience4j, Testcontainers, Docker, GitHub Actions.
+| Area                 | Technology                                                                                        |
+|----------------------|---------------------------------------------------------------------------------------------------|
+| Language and runtime | Java 21                                                                                           |
+| Framework            | Spring Boot 4.1 (Spring Framework 7), Spring MVC (servlet stack)                                  |
+| API                  | REST and JSON, versioned under `/api/v1`, Bean Validation, RFC 9457 `ProblemDetail` errors        |
+| Persistence          | Spring Data JPA, Hibernate 7, PostgreSQL 16                                                       |
+| Schema migrations    | Liquibase (formatted SQL)                                                                         |
+| Mapping              | MapStruct (compile-time, no reflection)                                                           |
+| Concurrency          | Pessimistic locking with ordered locks for balances, optimistic locking (`@Version`) for profiles |
+| Testing              | JUnit 5, AssertJ, Mockito, MockMvc, Testcontainers (real PostgreSQL, no H2)                       |
+| Build and quality    | Maven wrapper, Spotless (google-java-format), GitHub Actions CI                                   |
+| Local tooling        | Docker Compose, Bruno collection in `bruno/`                                                      |
+
+**Planned:** JWT resource server (Spring Security), Caffeine caching, Kafka with a transactional outbox, Resilience4j,
+Micrometer and Prometheus, Docker image.
 
 ## Run it
 
 ```bash
-docker compose up -d        # PostgreSQL (and Kafka once added)
-./mvnw spring-boot:run
-./mvnw verify               # unit and integration tests
+docker compose up -d                                          # PostgreSQL on port 5433
+./mvnw spring-boot:run -Dspring-boot.run.profiles=local       # API on http://localhost:8080
+./mvnw verify                                                 # unit and integration tests
 ```
 
-API docs: http://localhost:8080/swagger-ui.html (once phase 4 is done)
+Try the API with the [Bruno](https://www.usebruno.com/) collection in `bruno/`: open the folder as a collection and
+select the `local` environment.
+
+API docs (Swagger UI) are planned for a later phase.
 
 ## Architecture
+
+Layered Spring Boot service: controllers (`api`) call services (`service`), which use repositories (`repository`) and
+the domain model (`domain`). Controllers only see DTOs. Business exceptions live with the domain and are translated to
+HTTP in one `@RestControllerAdvice`.
 
 [Add the diagram here once built: a Mermaid diagram of accounts-service, PostgreSQL, outbox relay, Kafka, notifications-service.]
 
 ## Decisions
 
-| ADR | Decision |
-|-----|----------|
-| 001 | Pessimistic locking for transfers, optimistic for profiles |
-| 002 | Caching policy: what is cached and what never is |
-| 003 | Event model and messaging style |
-| 004 | Resilience4j versus Spring Framework 7 core retry |
+| ADR                                     | Decision                                                  | Status   |
+|-----------------------------------------|-----------------------------------------------------------|----------|
+| [001](docs/adr/001-locking-strategy.md) | Pessimistic locking for balances, optimistic for profiles | Accepted |
+| 002                                     | Caching policy: what is cached and what never is          | Planned  |
+| 003                                     | Event model and messaging style                           | Planned  |
+| 004                                     | Resilience4j versus Spring Framework 7 core retry         | Planned  |
 
 ## Roadmap
 
 - [x] Foundation, CI
-- [ ] Persistence and transactions
-- [ ] REST API and security
+- [x] Persistence and transactions
+- [ ] REST API (controllers, validation and error handling done; idempotent transfers next)
+- [ ] Security (JWT)
 - [ ] Caching
 - [ ] Event-driven core (outbox, Kafka, idempotent consumer)
 - [ ] Failure handling, schema evolution, read model
