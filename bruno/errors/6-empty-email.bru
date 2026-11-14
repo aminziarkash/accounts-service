@@ -1,0 +1,15 @@
+meta {
+  name: Empty email
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{baseUrl}}/api/v1/customers
+  body: json
+  auth: none
+}
+
+body:json {
+  {"email":"","firstName":"A","lastName":"B"}
+}

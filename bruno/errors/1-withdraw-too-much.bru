@@ -1,0 +1,15 @@
+meta {
+  name: Withdraw too much
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/v1/accounts/{{accountA}}/withdrawals
+  body: json
+  auth: none
+}
+
+body:json {
+  {"amount":"999999.00"}
+}
