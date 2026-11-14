@@ -5,6 +5,8 @@ spring:
     hikari:
       # wait at most 3s for a row lock instead of forever; the API answers 503 + Retry-After
       connection-init-sql: SET lock_timeout = '3s'
+  lifecycle:
+    timeout-per-shutdown-phase: 20s
   jpa:
     open-in-view: false
     hibernate:
@@ -18,3 +20,20 @@ app:
   idempotency:
     retention: PT24H
     cleanup-interval: PT1H
+
+server:
+  shutdown: graceful
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      group:
+        readiness:
+          # not ready (no traffic) when the database is unreachable
+          include: readinessState,db
