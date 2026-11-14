@@ -1,0 +1,15 @@
+meta {
+  name: Same account transfer
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/api/v1/transfers
+  body: json
+  auth: none
+}
+
+body:json {
+  {"fromAccountId":{{accountA}},"toAccountId":{{accountA}},"amount":"5.00"}
+}

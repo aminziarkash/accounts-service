@@ -1,0 +1,17 @@
+meta {
+  name: Withdraw
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{baseUrl}}/api/v1/accounts/{{accountA}}/withdrawals
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "amount": "30.00"
+  }
+}

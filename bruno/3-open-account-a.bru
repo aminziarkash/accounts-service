@@ -1,0 +1,22 @@
+meta {
+  name: Open account A
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/api/v1/accounts
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "customerId": {{customerId}},
+    "currency": "USD"
+  }
+}
+
+vars:post-response {
+  accountA: res.body.id
+}

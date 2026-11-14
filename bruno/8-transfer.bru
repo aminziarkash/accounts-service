@@ -1,0 +1,19 @@
+meta {
+  name: Transfer
+  type: http
+  seq: 8
+}
+
+post {
+  url: {{baseUrl}}/api/v1/transfers
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "fromAccountId": {{accountA}},
+    "toAccountId": {{accountB}},
+    "amount": "20.00"
+  }
+}

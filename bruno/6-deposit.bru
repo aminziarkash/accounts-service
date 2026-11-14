@@ -1,0 +1,17 @@
+meta {
+  name: Deposit
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{baseUrl}}/api/v1/accounts/{{accountA}}/deposits
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "amount": "100.00"
+  }
+}

@@ -1,0 +1,15 @@
+meta {
+  name: Negative deposit
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{baseUrl}}/api/v1/accounts/{{accountA}}/deposits
+  body: json
+  auth: none
+}
+
+body:json {
+  {"amount":"-5"}
+}

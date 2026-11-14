@@ -1,0 +1,11 @@
+meta {
+  name: Ledger page
+  type: http
+  seq: 9
+}
+
+get {
+  url: {{baseUrl}}/api/v1/accounts/{{accountA}}/ledger?page=0&size=20
+  body: none
+  auth: none
+}

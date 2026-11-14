@@ -1,0 +1,23 @@
+meta {
+  name: Create customer
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/v1/customers
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "email": "amin@test.com",
+    "firstName": "Amin",
+    "lastName": "Ziarkash"
+  }
+}
+
+vars:post-response {
+  customerId: res.body.id
+}
