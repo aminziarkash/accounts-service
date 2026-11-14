@@ -49,7 +49,7 @@ Planned:
 | Concurrency          | Pessimistic locking with ordered locks for balances, optimistic locking (`@Version`) for profiles |
 | Testing              | JUnit 5, AssertJ, Mockito, MockMvc, Testcontainers (real PostgreSQL, no H2), ArchUnit                |
 | Build and quality    | Maven wrapper, Spotless (google-java-format), GitHub Actions CI                                   |
-| Local tooling        | Docker Compose, Dockerfile, Bruno collection in `bruno/`                                          |
+| Local tooling        | Docker Compose, Keycloak, Dockerfile, Bruno collection in `bruno/`                                |
 
 **Planned:** JWT resource server (Spring Security), Caffeine caching, Kafka with a transactional outbox, Resilience4j,
 Micrometer and Prometheus.
@@ -57,13 +57,22 @@ Micrometer and Prometheus.
 ## Run it
 
 ```bash
-docker compose up -d                                          # PostgreSQL on port 5433
+docker compose up -d                                          # PostgreSQL on 5433, Keycloak on 8180
 ./mvnw spring-boot:run -Dspring-boot.run.profiles=local       # API on http://localhost:8080
 ./mvnw verify                                                 # unit and integration tests
 ```
 
 Try the API with the [Bruno](https://www.usebruno.com/) collection in `bruno/`: open the folder as a collection and
-select the `local` environment.
+select the `local` environment. Run one of the requests in the `auth` folder first (Get token for alice, bob or admin).
+It stores the access token in memory and every other request sends it as a bearer token. Tokens are never written to
+a file.
+
+### Identity provider
+
+Keycloak runs in Docker Compose and imports the `accounts` realm from `keycloak/accounts-realm.json`: roles `USER` and
+`ADMIN`, users `alice`, `bob` (USER) and `admin` (USER and ADMIN) with the username as the password, and a public client
+`accounts-web` for the future React app (Authorization Code with PKCE). These are local development credentials only.
+Admin console: http://localhost:8180 (admin / admin).
 
 API docs: http://localhost:8080/swagger-ui.html (OpenAPI JSON at `/v3/api-docs`).
 

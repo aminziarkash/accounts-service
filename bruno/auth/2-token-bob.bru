@@ -1,0 +1,30 @@
+meta {
+  name: Get token (bob)
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{keycloakUrl}}/realms/accounts/protocol/openid-connect/token
+  body: formUrlEncoded
+  auth: none
+}
+
+body:form-urlencoded {
+  grant_type: password
+  client_id: accounts-web
+  username: bob
+  password: bob
+}
+
+script:post-response {
+  // runtime variable: kept in memory, never written to a file, so it cannot be committed
+  bru.setVar("accessToken", res.body.access_token);
+}
+
+tests {
+  test("got an access token", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.body.access_token).to.be.a("string");
+  });
+}
