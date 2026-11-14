@@ -9,3 +9,8 @@ spring:
 logging:
   pattern:
     correlation: "[%X{correlationId:-}] "
+
+app:
+  idempotency:
+    retention: PT24H
+    cleanup-interval: PT1H
