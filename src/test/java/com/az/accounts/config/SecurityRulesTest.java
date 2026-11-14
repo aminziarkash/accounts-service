@@ -1,6 +1,5 @@
 package com.az.accounts.config;
 
-import com.az.accounts.service.AccessPolicy;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -11,6 +10,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.az.accounts.api.CustomerController;
+import com.az.accounts.service.AccessPolicy;
 import com.az.accounts.service.CustomerService;
 import com.az.accounts.service.view.CustomerView;
 import java.util.List;

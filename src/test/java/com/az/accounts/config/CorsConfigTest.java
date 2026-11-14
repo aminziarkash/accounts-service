@@ -1,11 +1,11 @@
 package com.az.accounts.config;
 
-import com.az.accounts.service.AccessPolicy;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.az.accounts.api.CustomerController;
+import com.az.accounts.service.AccessPolicy;
 import com.az.accounts.service.CustomerService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

@@ -1,12 +1,12 @@
 package com.az.accounts.api;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -69,13 +69,15 @@ class AccessControlApiTest {
                         get("/api/v1/accounts/5")
                                 .with(
                                         jwt().jwt(j -> j.subject("admin-sub"))
-                                                .authorities(new SimpleGrantedAuthority("ROLE_ADMIN"))))
+                                                .authorities(
+                                                        new SimpleGrantedAuthority("ROLE_ADMIN"))))
                 .andExpect(status().isOk());
 
         ArgumentCaptor<CurrentUser> users = ArgumentCaptor.forClass(CurrentUser.class);
         verify(accessPolicy, org.mockito.Mockito.times(2)).requireAccount(users.capture(), eq(5L));
         assertThat(users.getAllValues())
-                .containsExactly(new CurrentUser("alice-sub", false), new CurrentUser("admin-sub", true));
+                .containsExactly(
+                        new CurrentUser("alice-sub", false), new CurrentUser("admin-sub", true));
     }
 
     @Test
@@ -106,7 +108,8 @@ class AccessControlApiTest {
                                 .with(jwt())
                                 .header("Idempotency-Key", "k-2")
                                 .contentType(MediaType.APPLICATION_JSON)
-                                .content("{\"fromAccountId\":1,\"toAccountId\":2,\"amount\":\"10.00\"}"))
+                                .content(
+                                        "{\"fromAccountId\":1,\"toAccountId\":2,\"amount\":\"10.00\"}"))
                 .andExpect(status().isNotFound());
 
         verifyNoInteractions(transferService);

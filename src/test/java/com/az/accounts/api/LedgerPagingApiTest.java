@@ -1,6 +1,5 @@
 package com.az.accounts.api;
 
-import com.az.accounts.service.AccessPolicy;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -12,6 +11,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.az.accounts.config.SecurityConfig;
+import com.az.accounts.service.AccessPolicy;
 import com.az.accounts.service.AccountService;
 import com.az.accounts.service.CustomerService;
 import com.az.accounts.service.IdempotentAccountService;

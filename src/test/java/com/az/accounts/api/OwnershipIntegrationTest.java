@@ -207,7 +207,9 @@ class OwnershipIntegrationTest {
                                 .with(BOB)
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(
-                                        "{\"customerId\":" + aliceCustomer + ",\"currency\":\"USD\"}"))
+                                        "{\"customerId\":"
+                                                + aliceCustomer
+                                                + ",\"currency\":\"USD\"}"))
                 .andExpect(status().isNotFound());
     }
 
@@ -248,7 +250,8 @@ class OwnershipIntegrationTest {
     void customersWithoutAnOwnerAreAdminOnly() throws Exception {
         // a row from before security existed
         Customer legacy =
-                customerRepository.save(new Customer(UUID.randomUUID() + "@legacy.com", "Old", "Row"));
+                customerRepository.save(
+                        new Customer(UUID.randomUUID() + "@legacy.com", "Old", "Row"));
 
         mockMvc.perform(get("/api/v1/customers/{id}", legacy.getId()).with(ALICE))
                 .andExpect(status().isNotFound());

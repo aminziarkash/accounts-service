@@ -26,7 +26,8 @@ public class CustomerService {
         if (customerRepository.findByEmail(email).isPresent()) {
             throw new DuplicateEmailException(email);
         }
-        return mapper.toView(customerRepository.save(new Customer(ownerSubject, email, firstName, lastName)));
+        return mapper.toView(
+                customerRepository.save(new Customer(ownerSubject, email, firstName, lastName)));
     }
 
     @Transactional(readOnly = true)
