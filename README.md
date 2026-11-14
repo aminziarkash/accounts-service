@@ -99,6 +99,13 @@ The layer rules are enforced by ArchUnit tests, so the build fails if a controll
 - [ ] Failure handling, schema evolution, read model
 - [ ] Observability and delivery
 
+## Known limits
+
+- Idempotency keys are global. With security, they will be stored per caller (`client id + key`), so one user can
+  never replay another user's key.
+- A key is forgotten after 24 hours; a retry after that counts as a new request.
+- A busy account answers `503` with `Retry-After` after waiting 3 seconds for its row lock.
+
 ## Out of scope
 
 A real OAuth2 authorization server, Kubernetes manifests, and a UI.
