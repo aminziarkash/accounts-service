@@ -13,6 +13,7 @@ import com.az.accounts.exception.DuplicateEmailException;
 import com.az.accounts.exception.InsufficientFundsException;
 import com.az.accounts.service.AccountService;
 import com.az.accounts.service.CustomerService;
+import com.az.accounts.service.IdempotentAccountService;
 import com.az.accounts.service.IdempotentTransferService;
 import java.math.BigDecimal;
 import org.junit.jupiter.api.Test;
@@ -28,6 +29,7 @@ class ApiErrorHandlingTest {
 
     @Autowired private MockMvc mockMvc;
     @MockitoBean private IdempotentTransferService transferService;
+    @MockitoBean private IdempotentAccountService idempotentAccountService;
     @MockitoBean private CustomerService customerService;
     @MockitoBean private AccountService accountService;
 
@@ -50,6 +52,7 @@ class ApiErrorHandlingTest {
     void negativeDepositReturns400() throws Exception {
         mockMvc.perform(
                         post("/api/v1/accounts/1/deposits")
+                                .header("Idempotency-Key", "k-1")
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content("{\"amount\":\"-5\"}"))
                 .andExpect(status().isBadRequest())
@@ -104,13 +107,14 @@ class ApiErrorHandlingTest {
 
     @Test
     void insufficientFundsReturns422() throws Exception {
-        when(accountService.withdraw(1L, new BigDecimal("50.00")))
+        when(idempotentAccountService.withdraw("k-1", 1L, new BigDecimal("50.00")))
                 .thenThrow(
                         new InsufficientFundsException(
                                 1L, new BigDecimal("10.00"), new BigDecimal("50.00")));
 
         mockMvc.perform(
                         post("/api/v1/accounts/1/withdrawals")
+                                .header("Idempotency-Key", "k-1")
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content("{\"amount\":\"50.00\"}"))
                 .andExpect(status().isUnprocessableEntity())
