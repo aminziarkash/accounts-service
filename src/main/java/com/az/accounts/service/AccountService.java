@@ -9,6 +9,9 @@ import com.az.accounts.exception.CustomerNotFoundException;
 import com.az.accounts.repository.AccountRepository;
 import com.az.accounts.repository.CustomerRepository;
 import com.az.accounts.repository.LedgerEntryRepository;
+import com.az.accounts.service.view.AccountView;
+import com.az.accounts.service.view.LedgerEntryView;
+import com.az.accounts.service.view.ViewMapper;
 import java.math.BigDecimal;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
@@ -22,30 +25,33 @@ public class AccountService {
     private final AccountRepository accountRepository;
     private final LedgerEntryRepository ledgerEntryRepository;
     private final CustomerRepository customerRepository;
+    private final ViewMapper mapper;
 
     public AccountService(
             AccountRepository accountRepository,
             LedgerEntryRepository ledgerEntryRepository,
-            CustomerRepository customerRepository) {
+            CustomerRepository customerRepository,
+            ViewMapper mapper) {
         this.accountRepository = accountRepository;
         this.ledgerEntryRepository = ledgerEntryRepository;
         this.customerRepository = customerRepository;
+        this.mapper = mapper;
     }
 
     @Audited("DEPOSIT")
     @Transactional
-    public LedgerEntry deposit(Long accountId, BigDecimal amount) {
+    public LedgerEntryView deposit(Long accountId, BigDecimal amount) {
         Account account = lockAccount(accountId);
         LedgerEntry entry = account.deposit(amount);
-        return ledgerEntryRepository.save(entry);
+        return mapper.toView(ledgerEntryRepository.save(entry));
     }
 
     @Audited("WITHDRAW")
     @Transactional
-    public LedgerEntry withdraw(Long accountId, BigDecimal amount) {
+    public LedgerEntryView withdraw(Long accountId, BigDecimal amount) {
         Account account = lockAccount(accountId);
         LedgerEntry entry = account.withdraw(amount);
-        return ledgerEntryRepository.save(entry);
+        return mapper.toView(ledgerEntryRepository.save(entry));
     }
 
     @Audited("TRANSFER")
@@ -73,27 +79,30 @@ public class AccountService {
     }
 
     @Transactional
-    public Account openAccount(Long customerId, String currency) {
+    public AccountView openAccount(Long customerId, String currency) {
         Customer customer =
                 customerRepository
                         .findById(customerId)
                         .orElseThrow(() -> new CustomerNotFoundException(customerId));
         Account account = new Account(currency);
         customer.addAccount(account);
-        return accountRepository.save(account);
+        return mapper.toView(accountRepository.save(account));
     }
 
     @Transactional(readOnly = true)
-    public Account getAccount(Long id) {
-        return accountRepository.findById(id).orElseThrow(() -> new AccountNotFoundException(id));
+    public AccountView getAccount(Long id) {
+        return mapper.toView(
+                accountRepository.findById(id).orElseThrow(() -> new AccountNotFoundException(id)));
     }
 
     @Transactional(readOnly = true)
-    public Page<LedgerEntry> getLedger(Long accountId, Pageable pageable) {
+    public Page<LedgerEntryView> getLedger(Long accountId, Pageable pageable) {
         if (!accountRepository.existsById(accountId)) {
             throw new AccountNotFoundException(accountId);
         }
-        return ledgerEntryRepository.findByAccountId(accountId, pageable);
+        return ledgerEntryRepository
+                .findByAccountId(accountId, pageable)
+                .map(entry -> mapper.toView(entry));
     }
 
     private Account lockAccount(Long id) {

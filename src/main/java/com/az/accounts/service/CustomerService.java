@@ -4,6 +4,8 @@ import com.az.accounts.domain.Customer;
 import com.az.accounts.exception.CustomerNotFoundException;
 import com.az.accounts.exception.DuplicateEmailException;
 import com.az.accounts.repository.CustomerRepository;
+import com.az.accounts.service.view.CustomerView;
+import com.az.accounts.service.view.ViewMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -11,23 +13,26 @@ import org.springframework.transaction.annotation.Transactional;
 public class CustomerService {
 
     private final CustomerRepository customerRepository;
+    private final ViewMapper mapper;
 
-    public CustomerService(CustomerRepository customerRepository) {
+    public CustomerService(CustomerRepository customerRepository, ViewMapper mapper) {
         this.customerRepository = customerRepository;
+        this.mapper = mapper;
     }
 
     @Transactional
-    public Customer create(String email, String firstName, String lastName) {
+    public CustomerView create(String email, String firstName, String lastName) {
         if (customerRepository.findByEmail(email).isPresent()) {
             throw new DuplicateEmailException(email);
         }
-        return customerRepository.save(new Customer(email, firstName, lastName));
+        return mapper.toView(customerRepository.save(new Customer(email, firstName, lastName)));
     }
 
     @Transactional(readOnly = true)
-    public Customer get(Long id) {
-        return customerRepository
-                .findWithAccountsById(id)
-                .orElseThrow(() -> new CustomerNotFoundException(id));
+    public CustomerView get(Long id) {
+        return mapper.toView(
+                customerRepository
+                        .findWithAccountsById(id)
+                        .orElseThrow(() -> new CustomerNotFoundException(id)));
     }
 }

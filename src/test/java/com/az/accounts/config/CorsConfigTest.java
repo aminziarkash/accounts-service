@@ -5,7 +5,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.az.accounts.api.CustomerController;
-import com.az.accounts.api.mapper.AccountMapperImpl;
 import com.az.accounts.service.CustomerService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,7 +15,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(CustomerController.class)
-@Import({AccountMapperImpl.class, WebMvcConfig.class})
+@Import(WebMvcConfig.class)
 @TestPropertySource(properties = "app.cors.allowed-origins=https://app.example.com")
 class CorsConfigTest {
 

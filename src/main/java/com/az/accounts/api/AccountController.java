@@ -1,13 +1,11 @@
 package com.az.accounts.api;
 
-import com.az.accounts.api.dto.AccountResponse;
 import com.az.accounts.api.dto.AmountRequest;
-import com.az.accounts.api.dto.LedgerEntryResponse;
 import com.az.accounts.api.dto.OpenAccountRequest;
 import com.az.accounts.api.dto.PageResponse;
-import com.az.accounts.api.mapper.AccountMapper;
-import com.az.accounts.domain.Account;
 import com.az.accounts.service.AccountService;
+import com.az.accounts.service.view.AccountView;
+import com.az.accounts.service.view.LedgerEntryView;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -39,11 +37,9 @@ public class AccountController {
 
     private static final Set<String> LEDGER_SORT_FIELDS = Set.of("createdAt", "amount");
     private final AccountService accountService;
-    private final AccountMapper mapper;
 
-    public AccountController(AccountService accountService, AccountMapper mapper) {
+    public AccountController(AccountService accountService) {
         this.accountService = accountService;
-        this.mapper = mapper;
     }
 
     @Operation(summary = "Open an account for a customer")
@@ -51,22 +47,22 @@ public class AccountController {
     @ApiResponse(responseCode = "400", description = "Invalid customer id or currency code")
     @ApiResponse(responseCode = "404", description = "Customer not found")
     @PostMapping
-    public ResponseEntity<AccountResponse> open(@Valid @RequestBody OpenAccountRequest request) {
-        Account account = accountService.openAccount(request.customerId(), request.currency());
+    public ResponseEntity<AccountView> open(@Valid @RequestBody OpenAccountRequest request) {
+        AccountView account = accountService.openAccount(request.customerId(), request.currency());
         URI location =
                 ServletUriComponentsBuilder.fromCurrentRequest()
                         .path("/{id}")
-                        .buildAndExpand(account.getId())
+                        .buildAndExpand(account.id())
                         .toUri();
-        return ResponseEntity.created(location).body(mapper.toResponse(account));
+        return ResponseEntity.created(location).body(account);
     }
 
     @Operation(summary = "Get an account and its balance")
     @ApiResponse(responseCode = "200", description = "The account")
     @ApiResponse(responseCode = "404", description = "Account not found")
     @GetMapping("/{id}")
-    public AccountResponse get(@PathVariable Long id) {
-        return mapper.toResponse(accountService.getAccount(id));
+    public AccountView get(@PathVariable Long id) {
+        return accountService.getAccount(id);
     }
 
     @Operation(
@@ -80,9 +76,9 @@ public class AccountController {
     @ApiResponse(responseCode = "404", description = "Account not found")
     @PostMapping("/{id}/deposits")
     @ResponseStatus(HttpStatus.CREATED)
-    public LedgerEntryResponse deposit(
+    public LedgerEntryView deposit(
             @PathVariable Long id, @Valid @RequestBody AmountRequest request) {
-        return mapper.toResponse(accountService.deposit(id, request.amount()));
+        return accountService.deposit(id, request.amount());
     }
 
     @Operation(
@@ -97,9 +93,9 @@ public class AccountController {
     @ApiResponse(responseCode = "422", description = "Insufficient funds")
     @PostMapping("/{id}/withdrawals")
     @ResponseStatus(HttpStatus.CREATED)
-    public LedgerEntryResponse withdraw(
+    public LedgerEntryView withdraw(
             @PathVariable Long id, @Valid @RequestBody AmountRequest request) {
-        return mapper.toResponse(accountService.withdraw(id, request.amount()));
+        return accountService.withdraw(id, request.amount());
     }
 
     @Operation(
@@ -112,7 +108,7 @@ public class AccountController {
             description = "Page size above 100, unknown sort field or direction")
     @ApiResponse(responseCode = "404", description = "Account not found")
     @GetMapping("/{id}/ledger")
-    public PageResponse<LedgerEntryResponse> ledger(
+    public PageResponse<LedgerEntryView> ledger(
             @PathVariable Long id,
             @Parameter(description = "Zero-based page number")
                     @RequestParam(defaultValue = "0")
@@ -144,9 +140,6 @@ public class AccountController {
         // the id is the tie-breaker, so the order is always deterministic
         Sort order = Sort.by(dir, sort).and(Sort.by(dir, "id"));
 
-        return PageResponse.from(
-                accountService
-                        .getLedger(id, PageRequest.of(page, size, order))
-                        .map(entry -> mapper.toResponse(entry)));
+        return PageResponse.from(accountService.getLedger(id, PageRequest.of(page, size, order)));
     }
 }
