@@ -9,6 +9,7 @@ import com.az.accounts.domain.Customer;
 import com.az.accounts.domain.LedgerEntry;
 import com.az.accounts.exception.AccountNotFoundException;
 import com.az.accounts.exception.InsufficientFundsException;
+import com.az.accounts.exception.InvalidOperationException;
 import com.az.accounts.repository.AccountRepository;
 import com.az.accounts.repository.CustomerRepository;
 import com.az.accounts.repository.LedgerEntryRepository;
@@ -80,7 +81,7 @@ class AccountServiceTest {
     @Test
     void invalidAmountChangesNothing() {
         assertThatThrownBy(() -> accountService.deposit(accountId, new BigDecimal("-5")))
-                .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(InvalidOperationException.class);
 
         Account reloaded = accountRepository.findById(accountId).orElseThrow();
         assertThat(reloaded.getBalance()).isEqualByComparingTo("0");
@@ -172,7 +173,7 @@ class AccountServiceTest {
         accountService.deposit(accountId, new BigDecimal("10"));
 
         assertThatThrownBy(() -> accountService.transfer(accountId, accountId, new BigDecimal("5")))
-                .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(InvalidOperationException.class);
     }
 
     @Test

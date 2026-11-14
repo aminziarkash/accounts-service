@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 
 import com.az.accounts.exception.InsufficientFundsException;
+import com.az.accounts.exception.InvalidOperationException;
 import java.math.BigDecimal;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -41,7 +42,7 @@ class AccountTest {
     @ValueSource(strings = {"0", "0.00", "-1", "-0.01", "1.005", "10.123"})
     void depositRejectsInvalidAmounts(String amount) {
         assertThatThrownBy(() -> account.deposit(new BigDecimal(amount)))
-                .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(InvalidOperationException.class);
 
         assertThat(account.getBalance()).isEqualByComparingTo("0");
     }
@@ -111,7 +112,7 @@ class AccountTest {
         Account funded = accountWithBalance("50.00");
 
         assertThatThrownBy(() -> funded.withdraw(new BigDecimal(amount)))
-                .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(InvalidOperationException.class);
 
         assertThat(funded.getBalance()).isEqualByComparingTo("50.00");
     }
@@ -132,7 +133,7 @@ class AccountTest {
     @ValueSource(strings = {"ZZZ", "EU", "eur", ""})
     void accountRejectsUnknownCurrencyCodes(String code) {
         assertThatThrownBy(() -> new Account(code))
-                .isInstanceOf(IllegalArgumentException.class)
+                .isInstanceOf(InvalidOperationException.class)
                 .hasMessageContaining("Unknown currency code");
     }
 
