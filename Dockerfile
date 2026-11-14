@@ -1,11 +1,10 @@
-# Build stage: compile and package the jar
-FROM eclipse-temurin:21-jdk AS build
+# Build stage: compile and package the jar (Maven comes with the image, no wrapper download)
+FROM maven:3.9-eclipse-temurin-21 AS build
 WORKDIR /app
-COPY mvnw pom.xml ./
-COPY .mvn .mvn
-RUN chmod +x mvnw && ./mvnw -B -q dependency:go-offline
+COPY pom.xml ./
+RUN mvn -B -q dependency:go-offline
 COPY src src
-RUN ./mvnw -B -q -DskipTests package
+RUN mvn -B -q -DskipTests package
 
 # Run stage: JRE only, non-root user
 FROM eclipse-temurin:21-jre
