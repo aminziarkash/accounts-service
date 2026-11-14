@@ -126,7 +126,10 @@ class ApiErrorHandlingTest {
         mockMvc.perform(get("/api/v1/customers/1"))
                 .andExpect(status().isInternalServerError())
                 .andExpect(jsonPath("$.detail").value("An unexpected error occurred"))
-                .andExpect(content().string(org.hamcrest.Matchers.not(
-                        org.hamcrest.Matchers.containsString("hunter2"))));
+                .andExpect(
+                        content()
+                                .string(
+                                        org.hamcrest.Matchers.not(
+                                                org.hamcrest.Matchers.containsString("hunter2"))));
     }
 }
