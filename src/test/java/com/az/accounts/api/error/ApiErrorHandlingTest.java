@@ -1,6 +1,7 @@
 package com.az.accounts.api.error;
 
 import static org.mockito.Mockito.when;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -8,6 +9,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.az.accounts.config.SecurityConfig;
 import com.az.accounts.domain.Customer;
 import com.az.accounts.exception.AccountNotFoundException;
 import com.az.accounts.exception.DuplicateEmailException;
@@ -21,13 +23,16 @@ import java.math.BigDecimal;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.dao.CannotAcquireLockException;
 import org.springframework.http.MediaType;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest
+@Import(SecurityConfig.class)
 class ApiErrorHandlingTest {
 
     @Autowired private MockMvc mockMvc;
@@ -44,7 +49,8 @@ class ApiErrorHandlingTest {
                                 .content(
                                         """
                                         {"email":"","firstName":"A","lastName":"B"}
-                                        """))
+                                        """)
+                                .with(jwt()))
                 .andExpect(status().isBadRequest())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
                 .andExpect(jsonPath("$.title").value("Validation failed"))
@@ -57,7 +63,8 @@ class ApiErrorHandlingTest {
                         post("/api/v1/accounts/1/deposits")
                                 .header("Idempotency-Key", "k-1")
                                 .contentType(MediaType.APPLICATION_JSON)
-                                .content("{\"amount\":\"-5\"}"))
+                                .content("{\"amount\":\"-5\"}")
+                                .with(jwt()))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errors[?(@.field == 'amount')]").exists());
     }
@@ -67,7 +74,8 @@ class ApiErrorHandlingTest {
         mockMvc.perform(
                         post("/api/v1/customers")
                                 .contentType(MediaType.APPLICATION_JSON)
-                                .content("{not json"))
+                                .content("{not json")
+                                .with(jwt()))
                 .andExpect(status().isBadRequest())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON));
     }
@@ -76,7 +84,7 @@ class ApiErrorHandlingTest {
     void unknownAccountReturns404() throws Exception {
         when(accountService.getAccount(5L)).thenThrow(new AccountNotFoundException(5L));
 
-        mockMvc.perform(get("/api/v1/accounts/5"))
+        mockMvc.perform(get("/api/v1/accounts/5").with(jwt()))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.title").value("Resource not found"))
                 .andExpect(jsonPath("$.detail").value("Account not found: 5"));
@@ -93,7 +101,8 @@ class ApiErrorHandlingTest {
                                 .content(
                                         """
                                         {"email":"a@test.com","firstName":"A","lastName":"B"}
-                                        """))
+                                        """)
+                                .with(jwt()))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.title").value("Duplicate resource"));
     }
@@ -103,7 +112,7 @@ class ApiErrorHandlingTest {
         when(customerService.get(1L))
                 .thenThrow(new ObjectOptimisticLockingFailureException(Customer.class, 1L));
 
-        mockMvc.perform(get("/api/v1/customers/1"))
+        mockMvc.perform(get("/api/v1/customers/1").with(jwt()))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.title").value("Concurrent modification"));
     }
@@ -119,7 +128,8 @@ class ApiErrorHandlingTest {
                         post("/api/v1/accounts/1/withdrawals")
                                 .header("Idempotency-Key", "k-1")
                                 .contentType(MediaType.APPLICATION_JSON)
-                                .content("{\"amount\":\"50.00\"}"))
+                                .content("{\"amount\":\"50.00\"}")
+                                .with(jwt()))
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(jsonPath("$.title").value("Business rule violated"));
     }
@@ -128,7 +138,7 @@ class ApiErrorHandlingTest {
     void businessRuleViolationReturns422() throws Exception {
         when(customerService.get(1L)).thenThrow(new InvalidOperationException("Cannot do that"));
 
-        mockMvc.perform(get("/api/v1/customers/1"))
+        mockMvc.perform(get("/api/v1/customers/1").with(jwt()))
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(jsonPath("$.detail").value("Cannot do that"));
     }
@@ -137,7 +147,7 @@ class ApiErrorHandlingTest {
     void strayIllegalArgumentExceptionIsOurBugAndReturns500() throws Exception {
         when(customerService.get(1L)).thenThrow(new IllegalArgumentException("library said no"));
 
-        mockMvc.perform(get("/api/v1/customers/1"))
+        mockMvc.perform(get("/api/v1/customers/1").with(jwt()))
                 .andExpect(status().isInternalServerError())
                 .andExpect(jsonPath("$.detail").value("An unexpected error occurred"));
     }
@@ -147,17 +157,26 @@ class ApiErrorHandlingTest {
         when(accountService.getAccount(1L))
                 .thenThrow(new CannotAcquireLockException("lock timeout"));
 
-        mockMvc.perform(get("/api/v1/accounts/1"))
+        mockMvc.perform(get("/api/v1/accounts/1").with(jwt()))
                 .andExpect(status().isServiceUnavailable())
                 .andExpect(header().string("Retry-After", "1"))
                 .andExpect(jsonPath("$.title").value("Temporarily busy"));
     }
 
     @Test
+    void accessDeniedReturns403() throws Exception {
+        when(accountService.getAccount(1L)).thenThrow(new AccessDeniedException("not yours"));
+
+        mockMvc.perform(get("/api/v1/accounts/1").with(jwt()))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.title").value("Forbidden"));
+    }
+
+    @Test
     void unexpectedErrorReturns500WithoutLeakingDetails() throws Exception {
         when(customerService.get(1L)).thenThrow(new RuntimeException("db password is hunter2"));
 
-        mockMvc.perform(get("/api/v1/customers/1"))
+        mockMvc.perform(get("/api/v1/customers/1").with(jwt()))
                 .andExpect(status().isInternalServerError())
                 .andExpect(jsonPath("$.detail").value("An unexpected error occurred"))
                 .andExpect(

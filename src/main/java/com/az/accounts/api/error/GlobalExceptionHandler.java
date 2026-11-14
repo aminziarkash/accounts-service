@@ -19,6 +19,8 @@ import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.validation.method.ParameterErrors;
 import org.springframework.validation.method.ParameterValidationResult;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -110,6 +112,24 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         }
         String name = result.getMethodParameter().getParameterName();
         return name != null ? name : "parameter";
+    }
+
+    // 401: no token, or a token that is invalid or expired
+    @ExceptionHandler(AuthenticationException.class)
+    public ResponseEntity<ProblemDetail> handleUnauthenticated(AuthenticationException ex) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .header(HttpHeaders.WWW_AUTHENTICATE, "Bearer")
+                .body(
+                        problem(
+                                HttpStatus.UNAUTHORIZED,
+                                "Unauthorized",
+                                "A valid access token is required"));
+    }
+
+    // 403: a valid token, but not allowed to do this
+    @ExceptionHandler(AccessDeniedException.class)
+    public ProblemDetail handleForbidden(AccessDeniedException ex) {
+        return problem(HttpStatus.FORBIDDEN, "Forbidden", "You are not allowed to do this");
     }
 
     // 404
