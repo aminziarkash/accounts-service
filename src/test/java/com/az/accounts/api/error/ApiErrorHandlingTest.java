@@ -7,7 +7,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.az.accounts.api.mapper.AccountMapperImpl;
 import com.az.accounts.domain.Customer;
 import com.az.accounts.exception.AccountNotFoundException;
 import com.az.accounts.exception.DuplicateEmailException;
@@ -19,14 +18,12 @@ import java.math.BigDecimal;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
-import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest
-@Import(AccountMapperImpl.class)
 class ApiErrorHandlingTest {
 
     @Autowired private MockMvc mockMvc;

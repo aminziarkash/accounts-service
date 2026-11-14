@@ -4,14 +4,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.az.accounts.TestcontainersConfiguration;
-import com.az.accounts.domain.Account;
-import com.az.accounts.domain.Customer;
 import com.az.accounts.exception.AccountNotFoundException;
 import com.az.accounts.exception.CustomerNotFoundException;
 import com.az.accounts.exception.DuplicateEmailException;
 import com.az.accounts.repository.AccountRepository;
 import com.az.accounts.repository.CustomerRepository;
 import com.az.accounts.repository.LedgerEntryRepository;
+import com.az.accounts.service.view.AccountView;
+import com.az.accounts.service.view.CustomerView;
 import java.math.BigDecimal;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
@@ -45,23 +45,23 @@ class CustomerServiceTest {
     @Test
     void createsCustomerAndRejectsDuplicateEmail() {
         String email = newEmail();
-        Customer created = customerService.create(email, "Jane", "Doe");
+        CustomerView created = customerService.create(email, "Jane", "Doe");
 
-        assertThat(created.getId()).isNotNull();
+        assertThat(created.id()).isNotNull();
         assertThatThrownBy(() -> customerService.create(email, "Other", "Person"))
                 .isInstanceOf(DuplicateEmailException.class);
     }
 
     @Test
     void getReturnsCustomerWithAccountsLoaded() {
-        Customer customer = customerService.create(newEmail(), "Jane", "Doe");
-        accountService.openAccount(customer.getId(), "USD");
-        accountService.openAccount(customer.getId(), "EUR");
+        CustomerView customer = customerService.create(newEmail(), "Jane", "Doe");
+        accountService.openAccount(customer.id(), "USD");
+        accountService.openAccount(customer.id(), "EUR");
 
-        Customer loaded = customerService.get(customer.getId());
+        CustomerView loaded = customerService.get(customer.id());
 
         // no open session here: this only works because the accounts were fetched
-        assertThat(loaded.getAccounts()).hasSize(2);
+        assertThat(loaded.accounts()).hasSize(2);
     }
 
     @Test
@@ -74,12 +74,12 @@ class CustomerServiceTest {
 
     @Test
     void ledgerOfDepositIsPagedAndUnknownAccountIsNotFound() {
-        Customer customer = customerService.create(newEmail(), "Jane", "Doe");
-        Account account = accountService.openAccount(customer.getId(), "USD");
-        accountService.deposit(account.getId(), new BigDecimal("10.00"));
-        accountService.deposit(account.getId(), new BigDecimal("5.00"));
+        CustomerView customer = customerService.create(newEmail(), "Jane", "Doe");
+        AccountView account = accountService.openAccount(customer.id(), "USD");
+        accountService.deposit(account.id(), new BigDecimal("10.00"));
+        accountService.deposit(account.id(), new BigDecimal("5.00"));
 
-        var page = accountService.getLedger(account.getId(), PageRequest.of(0, 1));
+        var page = accountService.getLedger(account.id(), PageRequest.of(0, 1));
 
         assertThat(page.getContent()).hasSize(1);
         assertThat(page.getTotalElements()).isEqualTo(2);
