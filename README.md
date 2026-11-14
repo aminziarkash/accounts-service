@@ -49,10 +49,10 @@ Planned:
 | Concurrency          | Pessimistic locking with ordered locks for balances, optimistic locking (`@Version`) for profiles |
 | Testing              | JUnit 5, AssertJ, Mockito, MockMvc, Testcontainers (real PostgreSQL, no H2), ArchUnit                |
 | Build and quality    | Maven wrapper, Spotless (google-java-format), GitHub Actions CI                                   |
-| Local tooling        | Docker Compose, Bruno collection in `bruno/`                                                      |
+| Local tooling        | Docker Compose, Dockerfile, Bruno collection in `bruno/`                                          |
 
 **Planned:** JWT resource server (Spring Security), Caffeine caching, Kafka with a transactional outbox, Resilience4j,
-Micrometer and Prometheus, Docker image.
+Micrometer and Prometheus.
 
 ## Run it
 
@@ -66,6 +66,24 @@ Try the API with the [Bruno](https://www.usebruno.com/) collection in `bruno/`: 
 select the `local` environment.
 
 API docs: http://localhost:8080/swagger-ui.html (OpenAPI JSON at `/v3/api-docs`).
+
+Health probes for containers and Kubernetes: `/actuator/health/liveness` (is the process alive) and
+`/actuator/health/readiness` (can it serve traffic; includes the database). Shutdown is graceful: in-flight requests
+get up to 20 seconds to finish.
+
+### Run it in Docker
+
+```bash
+docker compose up -d
+docker build -t accounts-service .
+docker run --rm -p 8080:8080 \
+  -e SPRING_DATASOURCE_URL=jdbc:postgresql://host.docker.internal:5433/accounts \
+  -e SPRING_DATASOURCE_USERNAME=accounts -e SPRING_DATASOURCE_PASSWORD=accounts \
+  accounts-service
+```
+
+The image is built in two stages (JDK to build, JRE to run) and runs as a non-root user. Configuration comes from
+environment variables, nothing is baked into the image.
 
 ## Architecture
 
