@@ -2,7 +2,6 @@ package com.az.accounts.api;
 
 import com.az.accounts.api.dto.TransferRequest;
 import com.az.accounts.api.dto.TransferResponse;
-import com.az.accounts.service.AccountService;
 import com.az.accounts.service.IdempotentTransferService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;

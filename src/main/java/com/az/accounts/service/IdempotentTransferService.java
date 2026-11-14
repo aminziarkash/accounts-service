@@ -39,15 +39,13 @@ public class IdempotentTransferService {
         }
 
         try {
-            return transactionTemplate.execute(
-                    status -> {
-                        // insert the key first: a concurrent duplicate waits here and then fails
-                        IdempotencyRecord record =
-                                records.saveAndFlush(new IdempotencyRecord(key, hash));
-                        UUID reference = accountService.transfer(fromId, toId, amount);
-                        record.complete(reference);
-                        return reference;
-                    });
+            return transactionTemplate.execute(status -> {
+                // insert the key first: a concurrent duplicate waits here and then fails
+                IdempotencyRecord record = records.saveAndFlush(new IdempotencyRecord(key, hash));
+                UUID reference = accountService.transfer(fromId, toId, amount);
+                record.complete(reference);
+                return reference;
+            });
         } catch (DataIntegrityViolationException e) {
             // someone with the same key committed first: return their result
             IdempotencyRecord winner = records.findById(key).orElseThrow(() -> e);
