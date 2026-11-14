@@ -1,7 +1,7 @@
 # accounts-service
 
 Banking accounts service built with Spring Boot 4, PostgreSQL and Testcontainers: ledger, safe money movement under
-concurrency, and a validated REST API. Idempotent transfers, a transactional outbox with Kafka, JWT security and caching
+concurrency, a validated REST API and idempotent transfers. A transactional outbox with Kafka, JWT security and caching
 are planned.
 
 ![CI](https://github.com/aminziarkash/accounts-service/actions/workflows/ci.yml/badge.svg)
@@ -19,11 +19,15 @@ Built:
 - **Real tests.** PostgreSQL runs in Testcontainers, no H2. Concurrency tests prove there are no lost updates or
   deadlocks.
 - **A clean REST API.** Thin controllers, DTO records with MapStruct, Bean Validation and one error format (RFC 9457
-  `ProblemDetail`).
+  `ProblemDetail`). The ledger endpoint caps the page size and only sorts by whitelisted fields.
+- **Safe retries.** Transfers need an `Idempotency-Key`. The key is stored in PostgreSQL in the same transaction as the
+  transfer, so a repeated request returns the first result and money moves once, even for concurrent duplicates.
+- **Cross-cutting basics.** A correlation id filter, request timing interceptor, configurable CORS and an `@Audited`
+  aspect for money operations.
+- **Documented API.** OpenAPI docs and Swagger UI generated with springdoc.
 
 Planned:
 
-- **Safe retries.** Transfers accepting an `Idempotency-Key`, so a repeated request moves money once.
 - **Reliable events.** A transactional outbox publishing domain events to Kafka, with idempotent consumers and a
   dead-letter topic.
 - **Secure by default.** A stateless JWT resource server with ownership checks.
@@ -35,6 +39,8 @@ Planned:
 | Language and runtime | Java 21                                                                                           |
 | Framework            | Spring Boot 4.1 (Spring Framework 7), Spring MVC (servlet stack)                                  |
 | API                  | REST and JSON, versioned under `/api/v1`, Bean Validation, RFC 9457 `ProblemDetail` errors        |
+| API docs             | OpenAPI and Swagger UI with springdoc                                                             |
+| Cross-cutting        | Servlet filter (correlation id), `HandlerInterceptor` (timing), Spring AOP (audit), CORS config   |
 | Persistence          | Spring Data JPA, Hibernate 7, PostgreSQL 16                                                       |
 | Schema migrations    | Liquibase (formatted SQL)                                                                         |
 | Mapping              | MapStruct (compile-time, no reflection)                                                           |
@@ -57,13 +63,14 @@ docker compose up -d                                          # PostgreSQL on po
 Try the API with the [Bruno](https://www.usebruno.com/) collection in `bruno/`: open the folder as a collection and
 select the `local` environment.
 
-API docs (Swagger UI) are planned for a later phase.
+API docs: http://localhost:8080/swagger-ui.html (OpenAPI JSON at `/v3/api-docs`).
 
 ## Architecture
 
 Layered Spring Boot service: controllers (`api`) call services (`service`), which use repositories (`repository`) and
 the domain model (`domain`). Controllers only see DTOs. Business exceptions live with the domain and are translated to
-HTTP in one `@RestControllerAdvice`.
+HTTP in one `@RestControllerAdvice`. A servlet filter adds a correlation id to every request, and transfers are made
+idempotent with a key table written in the same transaction as the transfer.
 
 [Add the diagram here once built: a Mermaid diagram of accounts-service, PostgreSQL, outbox relay, Kafka, notifications-service.]
 
@@ -80,7 +87,7 @@ HTTP in one `@RestControllerAdvice`.
 
 - [x] Foundation, CI
 - [x] Persistence and transactions
-- [ ] REST API (controllers, validation and error handling done; idempotent transfers next)
+- [x] REST API (validation, error handling, idempotent transfers, OpenAPI)
 - [ ] Security (JWT)
 - [ ] Caching
 - [ ] Event-driven core (outbox, Kafka, idempotent consumer)
