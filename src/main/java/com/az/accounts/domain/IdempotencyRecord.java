@@ -6,7 +6,6 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.Objects;
-import java.util.UUID;
 import org.hibernate.annotations.CreationTimestamp;
 
 @Entity
@@ -20,7 +19,9 @@ public class IdempotencyRecord {
     @Column(nullable = false)
     private String requestHash;
 
-    private UUID transferReference;
+    /** Points to what the first request produced: a transfer reference or a ledger entry id. */
+    @Column(length = 64)
+    private String resultRef;
 
     @CreationTimestamp
     @Column(updatable = false)
@@ -33,8 +34,8 @@ public class IdempotencyRecord {
         this.requestHash = Objects.requireNonNull(requestHash, "requestHash");
     }
 
-    public void complete(UUID transferReference) {
-        this.transferReference = Objects.requireNonNull(transferReference, "transferReference");
+    public void complete(String resultRef) {
+        this.resultRef = Objects.requireNonNull(resultRef, "resultRef");
     }
 
     public String getIdempotencyKey() {
@@ -45,8 +46,8 @@ public class IdempotencyRecord {
         return requestHash;
     }
 
-    public UUID getTransferReference() {
-        return transferReference;
+    public String getResultRef() {
+        return resultRef;
     }
 
     public Instant getCreatedAt() {

@@ -5,6 +5,7 @@ import com.az.accounts.exception.CustomerNotFoundException;
 import com.az.accounts.exception.DuplicateEmailException;
 import com.az.accounts.exception.IdempotencyKeyReuseException;
 import com.az.accounts.exception.InsufficientFundsException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import org.slf4j.Logger;
@@ -16,10 +17,14 @@ import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
+import org.springframework.validation.method.ParameterErrors;
+import org.springframework.validation.method.ParameterValidationResult;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
 @RestControllerAdvice
@@ -54,6 +59,55 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                         .toList();
         problem.setProperty("errors", errors);
         return handleExceptionInternal(ex, problem, headers, status, request);
+    }
+
+    // 400: the same answer when Spring validates the whole method (a header or request param has a
+    // constraint, so the body is validated by method validation too)
+    @Override
+    protected ResponseEntity<Object> handleHandlerMethodValidationException(
+            HandlerMethodValidationException ex,
+            HttpHeaders headers,
+            HttpStatusCode status,
+            WebRequest request) {
+        ProblemDetail problem =
+                problem(
+                        HttpStatus.BAD_REQUEST,
+                        "Validation failed",
+                        "The request has invalid fields");
+        List<Map<String, String>> errors = new ArrayList<>();
+        for (ParameterValidationResult result : ex.getParameterValidationResults()) {
+            if (result instanceof ParameterErrors parameterErrors) {
+                parameterErrors
+                        .getFieldErrors()
+                        .forEach(e ->
+                                errors.add(
+                                        Map.of(
+                                                "field", e.getField(),
+                                                "message", String.valueOf(e.getDefaultMessage()))));
+            } else {
+                String name = parameterName(result);
+                result.getResolvableErrors()
+                        .forEach(e ->
+                                errors.add(
+                                        Map.of(
+                                                "field",
+                                                name,
+                                                "message",
+                                                String.valueOf(e.getDefaultMessage()))));
+            }
+        }
+        problem.setProperty("errors", errors);
+        return handleExceptionInternal(ex, problem, headers, status, request);
+    }
+
+    private static String parameterName(ParameterValidationResult result) {
+        RequestHeader header =
+                result.getMethodParameter().getParameterAnnotation(RequestHeader.class);
+        if (header != null && !header.value().isBlank()) {
+            return header.value();
+        }
+        String name = result.getMethodParameter().getParameterName();
+        return name != null ? name : "parameter";
     }
 
     // 404

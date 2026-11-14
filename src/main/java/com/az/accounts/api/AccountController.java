@@ -4,6 +4,7 @@ import com.az.accounts.api.dto.AmountRequest;
 import com.az.accounts.api.dto.OpenAccountRequest;
 import com.az.accounts.api.dto.PageResponse;
 import com.az.accounts.service.AccountService;
+import com.az.accounts.service.IdempotentAccountService;
 import com.az.accounts.service.view.AccountView;
 import com.az.accounts.service.view.LedgerEntryView;
 import io.swagger.v3.oas.annotations.Operation;
@@ -13,6 +14,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import java.net.URI;
 import java.util.Set;
 import org.springframework.data.domain.PageRequest;
@@ -23,6 +26,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -37,9 +41,12 @@ public class AccountController {
 
     private static final Set<String> LEDGER_SORT_FIELDS = Set.of("createdAt", "amount");
     private final AccountService accountService;
+    private final IdempotentAccountService idempotentAccountService;
 
-    public AccountController(AccountService accountService) {
+    public AccountController(
+            AccountService accountService, IdempotentAccountService idempotentAccountService) {
         this.accountService = accountService;
+        this.idempotentAccountService = idempotentAccountService;
     }
 
     @Operation(summary = "Open an account for a customer")
@@ -68,34 +75,55 @@ public class AccountController {
     @Operation(
             summary = "Deposit money",
             description =
-                    "Adds the amount to the balance and writes a ledger entry in one transaction.")
-    @ApiResponse(responseCode = "201", description = "The ledger entry that was created")
+                    "Adds the amount to the balance and writes a ledger entry in one transaction."
+                            + " Idempotent: the same Idempotency-Key with the same body returns the"
+                            + " original ledger entry and deposits once.")
+    @ApiResponse(responseCode = "201", description = "The ledger entry (created or replayed)")
     @ApiResponse(
             responseCode = "400",
-            description = "Amount missing, not positive, or more than 2 decimals")
+            description =
+                    "Amount missing, not positive, or more than 2 decimals, or missing Idempotency-Key")
     @ApiResponse(responseCode = "404", description = "Account not found")
+    @ApiResponse(responseCode = "422", description = "Key reused with a different body")
     @PostMapping("/{id}/deposits")
     @ResponseStatus(HttpStatus.CREATED)
     public LedgerEntryView deposit(
-            @PathVariable Long id, @Valid @RequestBody AmountRequest request) {
-        return accountService.deposit(id, request.amount());
+            @Parameter(description = "Unique key per logical operation, for example a UUID")
+                    @RequestHeader("Idempotency-Key")
+                    @NotBlank
+                    @Size(max = 100)
+                    String idempotencyKey,
+            @PathVariable Long id,
+            @Valid @RequestBody AmountRequest request) {
+        return idempotentAccountService.deposit(idempotencyKey, id, request.amount());
     }
 
     @Operation(
             summary = "Withdraw money",
             description =
-                    "Subtracts the amount from the balance and writes a ledger entry in one transaction.")
-    @ApiResponse(responseCode = "201", description = "The ledger entry that was created")
+                    "Subtracts the amount from the balance and writes a ledger entry in one"
+                            + " transaction. Idempotent: the same Idempotency-Key with the same body"
+                            + " returns the original ledger entry and withdraws once.")
+    @ApiResponse(responseCode = "201", description = "The ledger entry (created or replayed)")
     @ApiResponse(
             responseCode = "400",
-            description = "Amount missing, not positive, or more than 2 decimals")
+            description =
+                    "Amount missing, not positive, or more than 2 decimals, or missing Idempotency-Key")
     @ApiResponse(responseCode = "404", description = "Account not found")
-    @ApiResponse(responseCode = "422", description = "Insufficient funds")
+    @ApiResponse(
+            responseCode = "422",
+            description = "Insufficient funds, or key reused with a different body")
     @PostMapping("/{id}/withdrawals")
     @ResponseStatus(HttpStatus.CREATED)
     public LedgerEntryView withdraw(
-            @PathVariable Long id, @Valid @RequestBody AmountRequest request) {
-        return accountService.withdraw(id, request.amount());
+            @Parameter(description = "Unique key per logical operation, for example a UUID")
+                    @RequestHeader("Idempotency-Key")
+                    @NotBlank
+                    @Size(max = 100)
+                    String idempotencyKey,
+            @PathVariable Long id,
+            @Valid @RequestBody AmountRequest request) {
+        return idempotentAccountService.withdraw(idempotencyKey, id, request.amount());
     }
 
     @Operation(
