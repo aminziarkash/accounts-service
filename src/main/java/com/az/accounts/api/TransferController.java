@@ -57,9 +57,11 @@ public class TransferController {
             @Valid @RequestBody TransferRequest request,
             Authentication authentication) {
         // you may only move money out of your own account; the target can be anyone's
-        accessPolicy.requireAccount(CurrentUser.from(authentication), request.fromAccountId());
+        CurrentUser user = CurrentUser.from(authentication);
+        accessPolicy.requireAccount(user, request.fromAccountId());
         return new TransferResponse(
                 transferService.transfer(
+                        user,
                         idempotencyKey,
                         request.fromAccountId(),
                         request.toAccountId(),

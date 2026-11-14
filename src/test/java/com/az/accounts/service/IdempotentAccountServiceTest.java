@@ -34,6 +34,8 @@ import org.springframework.context.annotation.Import;
 @Import(TestcontainersConfiguration.class)
 class IdempotentAccountServiceTest {
 
+    private static final CurrentUser USER = new CurrentUser("user-1", false);
+
     @Autowired private IdempotentAccountService service;
     @Autowired private AccountRepository accountRepository;
     @Autowired private CustomerRepository customerRepository;
@@ -65,8 +67,8 @@ class IdempotentAccountServiceTest {
 
     @Test
     void depositReplayReturnsTheSameEntryAndDepositsOnce() {
-        LedgerEntryView first = service.deposit("d-1", accountId, new BigDecimal("50.00"));
-        LedgerEntryView replay = service.deposit("d-1", accountId, new BigDecimal("50.00"));
+        LedgerEntryView first = service.deposit(USER, "d-1", accountId, new BigDecimal("50.00"));
+        LedgerEntryView replay = service.deposit(USER, "d-1", accountId, new BigDecimal("50.00"));
 
         assertThat(replay.id()).isEqualTo(first.id());
         assertThat(replay.amount()).isEqualByComparingTo("50.00");
@@ -76,10 +78,10 @@ class IdempotentAccountServiceTest {
 
     @Test
     void withdrawReplayReturnsTheSameEntryAndWithdrawsOnce() {
-        service.deposit("d-2", accountId, new BigDecimal("100.00"));
+        service.deposit(USER, "d-2", accountId, new BigDecimal("100.00"));
 
-        LedgerEntryView first = service.withdraw("w-1", accountId, new BigDecimal("30.00"));
-        LedgerEntryView replay = service.withdraw("w-1", accountId, new BigDecimal("30.00"));
+        LedgerEntryView first = service.withdraw(USER, "w-1", accountId, new BigDecimal("30.00"));
+        LedgerEntryView replay = service.withdraw(USER, "w-1", accountId, new BigDecimal("30.00"));
 
         assertThat(replay.id()).isEqualTo(first.id());
         assertThat(balance()).isEqualByComparingTo("70.00");
@@ -87,8 +89,8 @@ class IdempotentAccountServiceTest {
 
     @Test
     void sameAmountWrittenDifferentlyIsTheSameRequest() {
-        LedgerEntryView first = service.deposit("d-3", accountId, new BigDecimal("10.00"));
-        LedgerEntryView replay = service.deposit("d-3", accountId, new BigDecimal("10.0"));
+        LedgerEntryView first = service.deposit(USER, "d-3", accountId, new BigDecimal("10.00"));
+        LedgerEntryView replay = service.deposit(USER, "d-3", accountId, new BigDecimal("10.0"));
 
         assertThat(replay.id()).isEqualTo(first.id());
         assertThat(balance()).isEqualByComparingTo("10.00");
@@ -96,9 +98,9 @@ class IdempotentAccountServiceTest {
 
     @Test
     void sameKeyWithDifferentAmountIsRejected() {
-        service.deposit("d-4", accountId, new BigDecimal("10.00"));
+        service.deposit(USER, "d-4", accountId, new BigDecimal("10.00"));
 
-        assertThatThrownBy(() -> service.deposit("d-4", accountId, new BigDecimal("20.00")))
+        assertThatThrownBy(() -> service.deposit(USER, "d-4", accountId, new BigDecimal("20.00")))
                 .isInstanceOf(IdempotencyKeyReuseException.class);
 
         assertThat(balance()).isEqualByComparingTo("10.00");
@@ -106,10 +108,11 @@ class IdempotentAccountServiceTest {
 
     @Test
     void sameKeyForADifferentOperationIsRejected() {
-        service.deposit("shared-key", accountId, new BigDecimal("10.00"));
+        service.deposit(USER, "shared-key", accountId, new BigDecimal("10.00"));
 
         // same key and amount, but a withdrawal is not the same request as a deposit
-        assertThatThrownBy(() -> service.withdraw("shared-key", accountId, new BigDecimal("10.00")))
+        assertThatThrownBy(() ->
+                        service.withdraw(USER, "shared-key", accountId, new BigDecimal("10.00")))
                 .isInstanceOf(IdempotencyKeyReuseException.class);
 
         assertThat(balance()).isEqualByComparingTo("10.00");
@@ -117,16 +120,30 @@ class IdempotentAccountServiceTest {
 
     @Test
     void failedWithdrawalIsNotStoredSoTheKeyCanBeRetried() {
-        assertThatThrownBy(() -> service.withdraw("w-2", accountId, new BigDecimal("5.00")))
+        assertThatThrownBy(() -> service.withdraw(USER, "w-2", accountId, new BigDecimal("5.00")))
                 .isInstanceOf(InsufficientFundsException.class);
 
         assertThat(idempotencyRecordRepository.findById("w-2")).isEmpty();
 
-        service.deposit("d-5", accountId, new BigDecimal("20.00"));
-        LedgerEntryView retry = service.withdraw("w-2", accountId, new BigDecimal("5.00"));
+        service.deposit(USER, "d-5", accountId, new BigDecimal("20.00"));
+        LedgerEntryView retry = service.withdraw(USER, "w-2", accountId, new BigDecimal("5.00"));
 
         assertThat(retry.id()).isNotNull();
         assertThat(balance()).isEqualByComparingTo("15.00");
+    }
+
+    @Test
+    void sameKeyFromDifferentCallersIsNotTheSameRequest() {
+        CurrentUser other = new CurrentUser("someone-else", false);
+
+        LedgerEntryView first =
+                service.deposit(USER, "shared-key", accountId, new BigDecimal("10.00"));
+        LedgerEntryView second =
+                service.deposit(other, "shared-key", accountId, new BigDecimal("10.00"));
+
+        // no replay across callers: nobody can read or reuse someone else's stored result
+        assertThat(second.id()).isNotEqualTo(first.id());
+        assertThat(balance()).isEqualByComparingTo("20.00");
     }
 
     @Test
@@ -139,7 +156,7 @@ class IdempotentAccountServiceTest {
             futures.add(
                     pool.submit(() -> {
                         start.await();
-                        return service.deposit("d-race", accountId, new BigDecimal("10.00"));
+                        return service.deposit(USER, "d-race", accountId, new BigDecimal("10.00"));
                     }));
         }
         start.countDown();

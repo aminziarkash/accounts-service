@@ -16,9 +16,9 @@ public class IdempotentTransferService {
         this.idempotency = idempotency;
     }
 
-    public UUID transfer(String key, Long fromId, Long toId, BigDecimal amount) {
+    public UUID transfer(CurrentUser user, String key, Long fromId, Long toId, BigDecimal amount) {
         return idempotency.execute(
-                key,
+                IdempotencyService.scope(user.subject(), key),
                 IdempotencyService.hash("TRANSFER", fromId, toId, amount),
                 () -> accountService.transfer(fromId, toId, amount),
                 UUID::toString,

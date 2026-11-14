@@ -7,3 +7,5 @@ databaseChangeLog:
       file: db/changelog/changes/003-idempotency-generic-result.sql
   - include:
       file: db/changelog/changes/004-customer-owner.sql
+  - include:
+      file: db/changelog/changes/005-idempotency-key-scope.sql

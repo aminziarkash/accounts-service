@@ -76,6 +76,14 @@ public class IdempotencyService {
     }
 
     /**
+     * Keys belong to the caller: two users can send the same header value without ever meeting, and
+     * nobody can replay someone else's key to read their stored result.
+     */
+    public static String scope(String callerSubject, String key) {
+        return callerSubject + ":" + key;
+    }
+
+    /**
      * Fingerprint of a request. The operation name is part of it, so the same key cannot be reused
      * for a deposit and a withdrawal. 10.0 and 10.00 count as the same amount.
      */

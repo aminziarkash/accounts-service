@@ -26,18 +26,20 @@ public class IdempotentAccountService {
         this.mapper = mapper;
     }
 
-    public LedgerEntryView deposit(String key, Long accountId, BigDecimal amount) {
+    public LedgerEntryView deposit(
+            CurrentUser user, String key, Long accountId, BigDecimal amount) {
         return idempotency.execute(
-                key,
+                IdempotencyService.scope(user.subject(), key),
                 IdempotencyService.hash("DEPOSIT", accountId, amount),
                 () -> accountService.deposit(accountId, amount),
                 entry -> String.valueOf(entry.id()),
                 this::loadEntry);
     }
 
-    public LedgerEntryView withdraw(String key, Long accountId, BigDecimal amount) {
+    public LedgerEntryView withdraw(
+            CurrentUser user, String key, Long accountId, BigDecimal amount) {
         return idempotency.execute(
-                key,
+                IdempotencyService.scope(user.subject(), key),
                 IdempotencyService.hash("WITHDRAW", accountId, amount),
                 () -> accountService.withdraw(accountId, amount),
                 entry -> String.valueOf(entry.id()),

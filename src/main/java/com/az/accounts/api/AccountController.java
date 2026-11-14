@@ -106,8 +106,9 @@ public class AccountController {
             @PathVariable Long id,
             @Valid @RequestBody AmountRequest request,
             Authentication authentication) {
-        accessPolicy.requireAccount(CurrentUser.from(authentication), id);
-        return idempotentAccountService.deposit(idempotencyKey, id, request.amount());
+        CurrentUser user = CurrentUser.from(authentication);
+        accessPolicy.requireAccount(user, id);
+        return idempotentAccountService.deposit(user, idempotencyKey, id, request.amount());
     }
 
     @Operation(
@@ -136,8 +137,9 @@ public class AccountController {
             @PathVariable Long id,
             @Valid @RequestBody AmountRequest request,
             Authentication authentication) {
-        accessPolicy.requireAccount(CurrentUser.from(authentication), id);
-        return idempotentAccountService.withdraw(idempotencyKey, id, request.amount());
+        CurrentUser user = CurrentUser.from(authentication);
+        accessPolicy.requireAccount(user, id);
+        return idempotentAccountService.withdraw(user, idempotencyKey, id, request.amount());
     }
 
     @Operation(

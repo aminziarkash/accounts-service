@@ -1,6 +1,5 @@
 package com.az.accounts.api;
 
-import com.az.accounts.service.AccessPolicy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
@@ -11,7 +10,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.az.accounts.config.SecurityConfig;
 import com.az.accounts.exception.IdempotencyKeyReuseException;
+import com.az.accounts.service.AccessPolicy;
 import com.az.accounts.service.AccountService;
+import com.az.accounts.service.CurrentUser;
 import com.az.accounts.service.CustomerService;
 import com.az.accounts.service.IdempotentAccountService;
 import com.az.accounts.service.IdempotentTransferService;
@@ -45,7 +46,12 @@ class TransferApiTest {
     @Test
     void transferWithKeyReturns201AndTheReference() throws Exception {
         UUID reference = UUID.randomUUID();
-        when(transferService.transfer(eq("abc-123"), eq(1L), eq(2L), any(BigDecimal.class)))
+        when(transferService.transfer(
+                        any(CurrentUser.class),
+                        eq("abc-123"),
+                        eq(1L),
+                        eq(2L),
+                        any(BigDecimal.class)))
                 .thenReturn(reference);
 
         mockMvc.perform(
@@ -81,7 +87,12 @@ class TransferApiTest {
 
     @Test
     void reusingAKeyWithADifferentBodyReturns422() throws Exception {
-        when(transferService.transfer(eq("abc-123"), eq(1L), eq(2L), any(BigDecimal.class)))
+        when(transferService.transfer(
+                        any(CurrentUser.class),
+                        eq("abc-123"),
+                        eq(1L),
+                        eq(2L),
+                        any(BigDecimal.class)))
                 .thenThrow(new IdempotencyKeyReuseException("abc-123"));
 
         mockMvc.perform(

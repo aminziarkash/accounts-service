@@ -1,6 +1,5 @@
 package com.az.accounts.api;
 
-import com.az.accounts.service.AccessPolicy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
@@ -12,7 +11,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.az.accounts.config.SecurityConfig;
 import com.az.accounts.domain.LedgerEntryType;
 import com.az.accounts.exception.IdempotencyKeyReuseException;
+import com.az.accounts.service.AccessPolicy;
 import com.az.accounts.service.AccountService;
+import com.az.accounts.service.CurrentUser;
 import com.az.accounts.service.CustomerService;
 import com.az.accounts.service.IdempotentAccountService;
 import com.az.accounts.service.IdempotentTransferService;
@@ -48,7 +49,8 @@ class AccountIdempotencyApiTest {
 
     @Test
     void depositWithKeyReturns201AndTheLedgerEntry() throws Exception {
-        when(idempotentAccountService.deposit(eq("k-1"), eq(1L), any(BigDecimal.class)))
+        when(idempotentAccountService.deposit(
+                        any(CurrentUser.class), eq("k-1"), eq(1L), any(BigDecimal.class)))
                 .thenReturn(entry(LedgerEntryType.DEPOSIT));
 
         mockMvc.perform(
@@ -64,7 +66,8 @@ class AccountIdempotencyApiTest {
 
     @Test
     void withdrawWithKeyReturns201AndTheLedgerEntry() throws Exception {
-        when(idempotentAccountService.withdraw(eq("k-2"), eq(1L), any(BigDecimal.class)))
+        when(idempotentAccountService.withdraw(
+                        any(CurrentUser.class), eq("k-2"), eq(1L), any(BigDecimal.class)))
                 .thenReturn(entry(LedgerEntryType.WITHDRAWAL));
 
         mockMvc.perform(
@@ -101,7 +104,8 @@ class AccountIdempotencyApiTest {
 
     @Test
     void reusingAKeyWithADifferentBodyReturns422() throws Exception {
-        when(idempotentAccountService.deposit(eq("k-1"), eq(1L), any(BigDecimal.class)))
+        when(idempotentAccountService.deposit(
+                        any(CurrentUser.class), eq("k-1"), eq(1L), any(BigDecimal.class)))
                 .thenThrow(new IdempotencyKeyReuseException("k-1"));
 
         mockMvc.perform(
