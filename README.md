@@ -18,8 +18,9 @@ Built:
   same transaction. Pessimistic locking with ordered locks for balances, optimistic locking for profiles. See ADR-001.
 - **Real tests.** PostgreSQL runs in Testcontainers, no H2. Concurrency tests prove there are no lost updates or
   deadlocks.
-- **A clean REST API.** Thin controllers, DTO records with MapStruct, Bean Validation and one error format (RFC 9457
-  `ProblemDetail`). The ledger endpoint caps the page size and only sorts by whitelisted fields.
+- **A clean REST API.** Thin controllers, Bean Validation and one error format (RFC 9457 `ProblemDetail`). Services
+  return read models mapped with MapStruct, so entities never reach the web layer. The ledger endpoint caps the page
+  size and only sorts by whitelisted fields.
 - **Safe retries.** Transfers need an `Idempotency-Key`. The key is stored in PostgreSQL in the same transaction as the
   transfer, so a repeated request returns the first result and money moves once, even for concurrent duplicates.
 - **Cross-cutting basics.** A correlation id filter, request timing interceptor, configurable CORS and an `@Audited`
@@ -45,7 +46,7 @@ Planned:
 | Schema migrations    | Liquibase (formatted SQL)                                                                         |
 | Mapping              | MapStruct (compile-time, no reflection)                                                           |
 | Concurrency          | Pessimistic locking with ordered locks for balances, optimistic locking (`@Version`) for profiles |
-| Testing              | JUnit 5, AssertJ, Mockito, MockMvc, Testcontainers (real PostgreSQL, no H2)                       |
+| Testing              | JUnit 5, AssertJ, Mockito, MockMvc, Testcontainers (real PostgreSQL, no H2), ArchUnit                |
 | Build and quality    | Maven wrapper, Spotless (google-java-format), GitHub Actions CI                                   |
 | Local tooling        | Docker Compose, Bruno collection in `bruno/`                                                      |
 
@@ -68,9 +69,11 @@ API docs: http://localhost:8080/swagger-ui.html (OpenAPI JSON at `/v3/api-docs`)
 ## Architecture
 
 Layered Spring Boot service: controllers (`api`) call services (`service`), which use repositories (`repository`) and
-the domain model (`domain`). Controllers only see DTOs. Business exceptions live with the domain and are translated to
-HTTP in one `@RestControllerAdvice`. A servlet filter adds a correlation id to every request, and transfers are made
-idempotent with a key table written in the same transaction as the transfer.
+the domain model (`domain`). Entities never leave the service layer: services map them to read models
+(`service.view`) inside the transaction, so controllers cannot trigger lazy loading. Business exceptions live with the
+domain and are translated to HTTP in one `@RestControllerAdvice`. A servlet filter adds a correlation id to every
+request, and transfers are made idempotent with a key table written in the same transaction as the transfer.
+The layer rules are enforced by ArchUnit tests, so the build fails if a controller touches an entity or a repository.
 
 [Add the diagram here once built: a Mermaid diagram of accounts-service, PostgreSQL, outbox relay, Kafka, notifications-service.]
 
