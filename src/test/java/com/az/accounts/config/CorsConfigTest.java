@@ -15,7 +15,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(CustomerController.class)
-@Import(WebMvcConfig.class)
+@Import({WebMvcConfig.class, SecurityConfig.class})
 @TestPropertySource(properties = "app.cors.allowed-origins=https://app.example.com")
 class CorsConfigTest {
 

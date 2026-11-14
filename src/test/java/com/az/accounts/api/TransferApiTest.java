@@ -3,10 +3,12 @@ package com.az.accounts.api;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.az.accounts.config.SecurityConfig;
 import com.az.accounts.exception.IdempotencyKeyReuseException;
 import com.az.accounts.service.AccountService;
 import com.az.accounts.service.CustomerService;
@@ -17,11 +19,13 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest
+@Import(SecurityConfig.class)
 class TransferApiTest {
 
     private static final String BODY =
@@ -46,7 +50,8 @@ class TransferApiTest {
                         post("/api/v1/transfers")
                                 .header("Idempotency-Key", "abc-123")
                                 .contentType(MediaType.APPLICATION_JSON)
-                                .content(BODY))
+                                .content(BODY)
+                                .with(jwt()))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.transferReference").value(reference.toString()));
     }
@@ -56,7 +61,8 @@ class TransferApiTest {
         mockMvc.perform(
                         post("/api/v1/transfers")
                                 .contentType(MediaType.APPLICATION_JSON)
-                                .content(BODY))
+                                .content(BODY)
+                                .with(jwt()))
                 .andExpect(status().isBadRequest());
     }
 
@@ -66,7 +72,8 @@ class TransferApiTest {
                         post("/api/v1/transfers")
                                 .header("Idempotency-Key", " ")
                                 .contentType(MediaType.APPLICATION_JSON)
-                                .content(BODY))
+                                .content(BODY)
+                                .with(jwt()))
                 .andExpect(status().isBadRequest());
     }
 
@@ -79,7 +86,8 @@ class TransferApiTest {
                         post("/api/v1/transfers")
                                 .header("Idempotency-Key", "abc-123")
                                 .contentType(MediaType.APPLICATION_JSON)
-                                .content(BODY))
+                                .content(BODY)
+                                .with(jwt()))
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(jsonPath("$.title").value("Business rule violated"));
     }
@@ -91,7 +99,8 @@ class TransferApiTest {
                                 .header("Idempotency-Key", "abc-123")
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(
-                                        "{\"fromAccountId\":1,\"toAccountId\":2,\"amount\":\"-1\"}"))
+                                        "{\"fromAccountId\":1,\"toAccountId\":2,\"amount\":\"-1\"}")
+                                .with(jwt()))
                 .andExpect(status().isBadRequest());
     }
 }

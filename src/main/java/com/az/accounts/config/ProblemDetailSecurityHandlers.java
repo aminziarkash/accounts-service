@@ -13,7 +13,8 @@ import org.springframework.web.servlet.HandlerExceptionResolver;
  * them to the normal exception handling, so a 401 or 403 has the same problem+json shape as every
  * other error.
  */
-public class ProblemDetailSecurityHandlers implements AuthenticationEntryPoint, AccessDeniedHandler {
+public class ProblemDetailSecurityHandlers
+        implements AuthenticationEntryPoint, AccessDeniedHandler {
 
     private final HandlerExceptionResolver resolver;
 

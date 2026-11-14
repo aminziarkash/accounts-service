@@ -17,6 +17,10 @@ logging:
     correlation: "[%X{correlationId:-}] "
 
 app:
+  security:
+    # Keycloak realm. Override both in a container, where the host name differs.
+    issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8180/realms/accounts}
+    jwk-set-uri: ${KEYCLOAK_JWK_SET_URI:http://localhost:8180/realms/accounts/protocol/openid-connect/certs}
   idempotency:
     retention: PT24H
     cleanup-interval: PT1H

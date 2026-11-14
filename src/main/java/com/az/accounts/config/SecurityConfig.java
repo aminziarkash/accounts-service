@@ -55,28 +55,32 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(Customizer.withDefaults())
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/actuator/health/**", "/actuator/info")
-                        .permitAll()
-                        .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html")
-                        .permitAll()
-                        .requestMatchers("/error")
-                        .permitAll()
-                        .requestMatchers("/api/**")
-                        .authenticated()
-                        .anyRequest()
-                        .denyAll())
-                .oauth2ResourceServer(oauth2 -> oauth2
-                        .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter()))
-                        .authenticationEntryPoint(handlers)
-                        .accessDeniedHandler(handlers))
-                .exceptionHandling(e -> e
-                        .authenticationEntryPoint(handlers)
-                        .accessDeniedHandler(handlers));
+                .authorizeHttpRequests(auth ->
+                        auth.requestMatchers("/actuator/health/**", "/actuator/info")
+                                .permitAll()
+                                .requestMatchers(
+                                        "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html")
+                                .permitAll()
+                                .requestMatchers("/error")
+                                .permitAll()
+                                .requestMatchers("/api/**")
+                                .authenticated()
+                                .anyRequest()
+                                .denyAll())
+                .oauth2ResourceServer(oauth2 ->
+                        oauth2.jwt(jwt ->
+                                        jwt.jwtAuthenticationConverter(
+                                                jwtAuthenticationConverter()))
+                                .authenticationEntryPoint(handlers)
+                                .accessDeniedHandler(handlers))
+                .exceptionHandling(
+                        e -> e.authenticationEntryPoint(handlers).accessDeniedHandler(handlers));
         return http.build();
     }
 
-    /** Turns the Keycloak realm roles in the token into Spring authorities: USER becomes ROLE_USER. */
+    /**
+     * Turns the Keycloak realm roles in the token into Spring authorities: USER becomes ROLE_USER.
+     */
     public static JwtAuthenticationConverter jwtAuthenticationConverter() {
         Converter<Jwt, Collection<GrantedAuthority>> roles = SecurityConfig::realmRoles;
         JwtAuthenticationConverter converter = new JwtAuthenticationConverter();

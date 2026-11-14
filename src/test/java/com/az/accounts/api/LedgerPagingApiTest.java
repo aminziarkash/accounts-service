@@ -5,10 +5,12 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.az.accounts.config.SecurityConfig;
 import com.az.accounts.service.AccountService;
 import com.az.accounts.service.CustomerService;
 import com.az.accounts.service.IdempotentAccountService;
@@ -18,6 +20,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -26,6 +29,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest
+@Import(SecurityConfig.class)
 class LedgerPagingApiTest {
 
     @Autowired private MockMvc mockMvc;
@@ -43,7 +47,7 @@ class LedgerPagingApiTest {
     void defaultsToTwentyEntriesNewestFirstWithIdAsTieBreaker() throws Exception {
         stubEmptyPage();
 
-        mockMvc.perform(get("/api/v1/accounts/1/ledger"))
+        mockMvc.perform(get("/api/v1/accounts/1/ledger").with(jwt()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.size").value(20));
 
@@ -61,25 +65,27 @@ class LedgerPagingApiTest {
         when(accountService.getLedger(eq(1L), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(), PageRequest.of(0, 100), 0));
 
-        mockMvc.perform(get("/api/v1/accounts/1/ledger?size=100")).andExpect(status().isOk());
+        mockMvc.perform(get("/api/v1/accounts/1/ledger?size=100").with(jwt()))
+                .andExpect(status().isOk());
     }
 
     @Test
     void rejectsPageSizeAboveTheCap() throws Exception {
-        mockMvc.perform(get("/api/v1/accounts/1/ledger?size=101"))
+        mockMvc.perform(get("/api/v1/accounts/1/ledger?size=101").with(jwt()))
                 .andExpect(status().isBadRequest());
     }
 
     @Test
     void rejectsZeroSizeAndNegativePage() throws Exception {
-        mockMvc.perform(get("/api/v1/accounts/1/ledger?size=0")).andExpect(status().isBadRequest());
-        mockMvc.perform(get("/api/v1/accounts/1/ledger?page=-1"))
+        mockMvc.perform(get("/api/v1/accounts/1/ledger?size=0").with(jwt()))
+                .andExpect(status().isBadRequest());
+        mockMvc.perform(get("/api/v1/accounts/1/ledger?page=-1").with(jwt()))
                 .andExpect(status().isBadRequest());
     }
 
     @Test
     void rejectsUnknownSortField() throws Exception {
-        mockMvc.perform(get("/api/v1/accounts/1/ledger?sort=balanceAfter"))
+        mockMvc.perform(get("/api/v1/accounts/1/ledger?sort=balanceAfter").with(jwt()))
                 .andExpect(status().isBadRequest())
                 .andExpect(
                         jsonPath("$.detail")
@@ -88,7 +94,7 @@ class LedgerPagingApiTest {
 
     @Test
     void rejectsUnknownDirection() throws Exception {
-        mockMvc.perform(get("/api/v1/accounts/1/ledger?direction=sideways"))
+        mockMvc.perform(get("/api/v1/accounts/1/ledger?direction=sideways").with(jwt()))
                 .andExpect(status().isBadRequest());
     }
 
@@ -96,7 +102,7 @@ class LedgerPagingApiTest {
     void sortsByAmountAscendingWhenAsked() throws Exception {
         stubEmptyPage();
 
-        mockMvc.perform(get("/api/v1/accounts/1/ledger?sort=amount&direction=asc"))
+        mockMvc.perform(get("/api/v1/accounts/1/ledger?sort=amount&direction=asc").with(jwt()))
                 .andExpect(status().isOk());
 
         ArgumentCaptor<Pageable> captor = ArgumentCaptor.forClass(Pageable.class);

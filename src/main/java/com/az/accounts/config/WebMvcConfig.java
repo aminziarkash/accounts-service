@@ -30,8 +30,9 @@ public class WebMvcConfig implements WebMvcConfigurer {
         registry.addMapping("/api/**")
                 .allowedOrigins(cors.allowedOrigins().toArray(String[]::new))
                 .allowedMethods("GET", "POST", "OPTIONS")
-                .allowedHeaders("Content-Type", "Idempotency-Key", "X-Correlation-Id")
-                .exposedHeaders("Location", "X-Correlation-Id")
+                .allowedHeaders(
+                        "Authorization", "Content-Type", "Idempotency-Key", "X-Correlation-Id")
+                .exposedHeaders("Location", "Retry-After", "X-Correlation-Id")
                 .allowCredentials(false)
                 .maxAge(3600);
     }

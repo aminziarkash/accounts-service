@@ -3,10 +3,12 @@ package com.az.accounts.api;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.az.accounts.config.SecurityConfig;
 import com.az.accounts.domain.LedgerEntryType;
 import com.az.accounts.exception.IdempotencyKeyReuseException;
 import com.az.accounts.service.AccountService;
@@ -19,11 +21,13 @@ import java.time.Instant;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest
+@Import(SecurityConfig.class)
 class AccountIdempotencyApiTest {
 
     private static final String BODY = "{\"amount\":\"25.00\"}";
@@ -49,7 +53,8 @@ class AccountIdempotencyApiTest {
                         post("/api/v1/accounts/1/deposits")
                                 .header("Idempotency-Key", "k-1")
                                 .contentType(MediaType.APPLICATION_JSON)
-                                .content(BODY))
+                                .content(BODY)
+                                .with(jwt()))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").value(7))
                 .andExpect(jsonPath("$.type").value("DEPOSIT"));
@@ -64,7 +69,8 @@ class AccountIdempotencyApiTest {
                         post("/api/v1/accounts/1/withdrawals")
                                 .header("Idempotency-Key", "k-2")
                                 .contentType(MediaType.APPLICATION_JSON)
-                                .content(BODY))
+                                .content(BODY)
+                                .with(jwt()))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.type").value("WITHDRAWAL"));
     }
@@ -74,7 +80,8 @@ class AccountIdempotencyApiTest {
         mockMvc.perform(
                         post("/api/v1/accounts/1/deposits")
                                 .contentType(MediaType.APPLICATION_JSON)
-                                .content(BODY))
+                                .content(BODY)
+                                .with(jwt()))
                 .andExpect(status().isBadRequest());
     }
 
@@ -84,7 +91,8 @@ class AccountIdempotencyApiTest {
                         post("/api/v1/accounts/1/withdrawals")
                                 .header("Idempotency-Key", " ")
                                 .contentType(MediaType.APPLICATION_JSON)
-                                .content(BODY))
+                                .content(BODY)
+                                .with(jwt()))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errors[?(@.field == 'Idempotency-Key')]").exists());
     }
@@ -98,7 +106,8 @@ class AccountIdempotencyApiTest {
                         post("/api/v1/accounts/1/deposits")
                                 .header("Idempotency-Key", "k-1")
                                 .contentType(MediaType.APPLICATION_JSON)
-                                .content(BODY))
+                                .content(BODY)
+                                .with(jwt()))
                 .andExpect(status().isUnprocessableEntity());
     }
 }
