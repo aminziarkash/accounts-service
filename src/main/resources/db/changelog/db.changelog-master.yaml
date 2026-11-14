@@ -3,3 +3,5 @@ databaseChangeLog:
       file: db/changelog/changes/001-baseline.sql
   - include:
       file: db/changelog/changes/002-idempotency-records.sql
+  - include:
+      file: db/changelog/changes/003-idempotency-generic-result.sql
