@@ -1,7 +1,7 @@
 # accounts-service
 
 Banking accounts service built with Spring Boot 4, PostgreSQL and Testcontainers: ledger, safe money movement under
-concurrency, a validated REST API and idempotent transfers. A transactional outbox with Kafka, JWT security and caching
+concurrency, a validated REST API and idempotent money operations. A transactional outbox with Kafka, JWT security and caching
 are planned.
 
 ![CI](https://github.com/aminziarkash/accounts-service/actions/workflows/ci.yml/badge.svg)
@@ -21,7 +21,7 @@ Built:
 - **A clean REST API.** Thin controllers, Bean Validation and one error format (RFC 9457 `ProblemDetail`). Services
   return read models mapped with MapStruct, so entities never reach the web layer. The ledger endpoint caps the page
   size and only sorts by whitelisted fields.
-- **Safe retries.** Transfers need an `Idempotency-Key`. The key is stored in PostgreSQL in the same transaction as the
+- **Safe retries.** Deposits, withdrawals and transfers need an `Idempotency-Key`. The key is stored in PostgreSQL in the same transaction as the
   transfer, so a repeated request returns the first result and money moves once, even for concurrent duplicates.
 - **Cross-cutting basics.** A correlation id filter, request timing interceptor, configurable CORS and an `@Audited`
   aspect for money operations.
@@ -72,7 +72,8 @@ Layered Spring Boot service: controllers (`api`) call services (`service`), whic
 the domain model (`domain`). Entities never leave the service layer: services map them to read models
 (`service.view`) inside the transaction, so controllers cannot trigger lazy loading. Business exceptions live with the
 domain and are translated to HTTP in one `@RestControllerAdvice`. A servlet filter adds a correlation id to every
-request, and transfers are made idempotent with a key table written in the same transaction as the transfer.
+request, and deposits, withdrawals and transfers are made idempotent with one key table, written in the same
+transaction as the money movement.
 The layer rules are enforced by ArchUnit tests, so the build fails if a controller touches an entity or a repository.
 
 [Add the diagram here once built: a Mermaid diagram of accounts-service, PostgreSQL, outbox relay, Kafka, notifications-service.]
@@ -90,7 +91,7 @@ The layer rules are enforced by ArchUnit tests, so the build fails if a controll
 
 - [x] Foundation, CI
 - [x] Persistence and transactions
-- [x] REST API (validation, error handling, idempotent transfers, OpenAPI)
+- [x] REST API (validation, error handling, idempotent deposits, withdrawals and transfers, OpenAPI)
 - [ ] Security (JWT)
 - [ ] Caching
 - [ ] Event-driven core (outbox, Kafka, idempotent consumer)
