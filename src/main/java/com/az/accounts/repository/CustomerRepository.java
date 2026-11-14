@@ -31,4 +31,6 @@ public interface CustomerRepository extends JpaRepository<Customer, Long> {
     Optional<Customer> findWithAccountsById(Long id);
 
     Optional<Customer> findByEmail(String email);
+
+    boolean existsByIdAndOwnerSubject(Long id, String ownerSubject);
 }

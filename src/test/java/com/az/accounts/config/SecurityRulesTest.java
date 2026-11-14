@@ -1,5 +1,6 @@
 package com.az.accounts.config;
 
+import com.az.accounts.service.AccessPolicy;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -27,6 +28,7 @@ class SecurityRulesTest {
 
     @Autowired private MockMvc mockMvc;
 
+    @MockitoBean private AccessPolicy accessPolicy;
     @MockitoBean private CustomerService customerService;
 
     @Test

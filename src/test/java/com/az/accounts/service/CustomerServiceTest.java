@@ -45,16 +45,16 @@ class CustomerServiceTest {
     @Test
     void createsCustomerAndRejectsDuplicateEmail() {
         String email = newEmail();
-        CustomerView created = customerService.create(email, "Jane", "Doe");
+        CustomerView created = customerService.create("owner-1", email, "Jane", "Doe");
 
         assertThat(created.id()).isNotNull();
-        assertThatThrownBy(() -> customerService.create(email, "Other", "Person"))
+        assertThatThrownBy(() -> customerService.create("owner-1", email, "Other", "Person"))
                 .isInstanceOf(DuplicateEmailException.class);
     }
 
     @Test
     void getReturnsCustomerWithAccountsLoaded() {
-        CustomerView customer = customerService.create(newEmail(), "Jane", "Doe");
+        CustomerView customer = customerService.create("owner-1", newEmail(), "Jane", "Doe");
         accountService.openAccount(customer.id(), "USD");
         accountService.openAccount(customer.id(), "EUR");
 
@@ -74,7 +74,7 @@ class CustomerServiceTest {
 
     @Test
     void ledgerOfDepositIsPagedAndUnknownAccountIsNotFound() {
-        CustomerView customer = customerService.create(newEmail(), "Jane", "Doe");
+        CustomerView customer = customerService.create("owner-1", newEmail(), "Jane", "Doe");
         AccountView account = accountService.openAccount(customer.id(), "USD");
         accountService.deposit(account.id(), new BigDecimal("10.00"));
         accountService.deposit(account.id(), new BigDecimal("5.00"));

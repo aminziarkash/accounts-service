@@ -35,6 +35,10 @@ public class Customer {
     @Column(nullable = false)
     private String lastName;
 
+    /** Keycloak "sub" of the owner. Null only for rows created before security existed. */
+    @Column(updatable = false, length = 64)
+    private String ownerSubject;
+
     @CreationTimestamp
     @Column(updatable = false)
     private Instant createdAt;
@@ -48,11 +52,17 @@ public class Customer {
 
     protected Customer() {}
 
+    /** A customer without an owner: only admins can reach it. */
     public Customer(String email, String firstName, String lastName) {
+        this(null, email, firstName, lastName);
+    }
+
+    public Customer(String ownerSubject, String email, String firstName, String lastName) {
         Objects.requireNonNull(email, "email");
         Objects.requireNonNull(firstName, "firstName");
         Objects.requireNonNull(lastName, "lastName");
 
+        this.ownerSubject = ownerSubject;
         this.email = email;
         this.firstName = firstName;
         this.lastName = lastName;
@@ -69,6 +79,10 @@ public class Customer {
 
     public Long getVersion() {
         return version;
+    }
+
+    public String getOwnerSubject() {
+        return ownerSubject;
     }
 
     public String getEmail() {

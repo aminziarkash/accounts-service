@@ -1,5 +1,6 @@
 package com.az.accounts.config;
 
+import com.az.accounts.service.AccessPolicy;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -21,6 +22,7 @@ class CorsConfigTest {
 
     @Autowired private MockMvc mockMvc;
 
+    @MockitoBean private AccessPolicy accessPolicy;
     @MockitoBean private CustomerService customerService;
 
     @Test

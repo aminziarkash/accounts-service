@@ -21,11 +21,12 @@ public class CustomerService {
     }
 
     @Transactional
-    public CustomerView create(String email, String firstName, String lastName) {
+    public CustomerView create(
+            String ownerSubject, String email, String firstName, String lastName) {
         if (customerRepository.findByEmail(email).isPresent()) {
             throw new DuplicateEmailException(email);
         }
-        return mapper.toView(customerRepository.save(new Customer(email, firstName, lastName)));
+        return mapper.toView(customerRepository.save(new Customer(ownerSubject, email, firstName, lastName)));
     }
 
     @Transactional(readOnly = true)

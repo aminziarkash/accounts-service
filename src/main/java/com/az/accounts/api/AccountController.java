@@ -3,7 +3,9 @@ package com.az.accounts.api;
 import com.az.accounts.api.dto.AmountRequest;
 import com.az.accounts.api.dto.OpenAccountRequest;
 import com.az.accounts.api.dto.PageResponse;
+import com.az.accounts.service.AccessPolicy;
 import com.az.accounts.service.AccountService;
+import com.az.accounts.service.CurrentUser;
 import com.az.accounts.service.IdempotentAccountService;
 import com.az.accounts.service.view.AccountView;
 import com.az.accounts.service.view.LedgerEntryView;
@@ -22,6 +24,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -42,11 +45,15 @@ public class AccountController {
     private static final Set<String> LEDGER_SORT_FIELDS = Set.of("createdAt", "amount");
     private final AccountService accountService;
     private final IdempotentAccountService idempotentAccountService;
+    private final AccessPolicy accessPolicy;
 
     public AccountController(
-            AccountService accountService, IdempotentAccountService idempotentAccountService) {
+            AccountService accountService,
+            IdempotentAccountService idempotentAccountService,
+            AccessPolicy accessPolicy) {
         this.accountService = accountService;
         this.idempotentAccountService = idempotentAccountService;
+        this.accessPolicy = accessPolicy;
     }
 
     @Operation(summary = "Open an account for a customer")
@@ -54,7 +61,9 @@ public class AccountController {
     @ApiResponse(responseCode = "400", description = "Invalid customer id or currency code")
     @ApiResponse(responseCode = "404", description = "Customer not found")
     @PostMapping
-    public ResponseEntity<AccountView> open(@Valid @RequestBody OpenAccountRequest request) {
+    public ResponseEntity<AccountView> open(
+            @Valid @RequestBody OpenAccountRequest request, Authentication authentication) {
+        accessPolicy.requireCustomer(CurrentUser.from(authentication), request.customerId());
         AccountView account = accountService.openAccount(request.customerId(), request.currency());
         URI location =
                 ServletUriComponentsBuilder.fromCurrentRequest()
@@ -68,7 +77,8 @@ public class AccountController {
     @ApiResponse(responseCode = "200", description = "The account")
     @ApiResponse(responseCode = "404", description = "Account not found")
     @GetMapping("/{id}")
-    public AccountView get(@PathVariable Long id) {
+    public AccountView get(@PathVariable Long id, Authentication authentication) {
+        accessPolicy.requireAccount(CurrentUser.from(authentication), id);
         return accountService.getAccount(id);
     }
 
@@ -94,7 +104,9 @@ public class AccountController {
                     @Size(max = 100)
                     String idempotencyKey,
             @PathVariable Long id,
-            @Valid @RequestBody AmountRequest request) {
+            @Valid @RequestBody AmountRequest request,
+            Authentication authentication) {
+        accessPolicy.requireAccount(CurrentUser.from(authentication), id);
         return idempotentAccountService.deposit(idempotencyKey, id, request.amount());
     }
 
@@ -122,7 +134,9 @@ public class AccountController {
                     @Size(max = 100)
                     String idempotencyKey,
             @PathVariable Long id,
-            @Valid @RequestBody AmountRequest request) {
+            @Valid @RequestBody AmountRequest request,
+            Authentication authentication) {
+        accessPolicy.requireAccount(CurrentUser.from(authentication), id);
         return idempotentAccountService.withdraw(idempotencyKey, id, request.amount());
     }
 
@@ -152,7 +166,10 @@ public class AccountController {
                     String sort,
             @Parameter(description = "Sort direction: asc or desc")
                     @RequestParam(defaultValue = "desc")
-                    String direction) {
+                    String direction,
+            Authentication authentication) {
+
+        accessPolicy.requireAccount(CurrentUser.from(authentication), id);
 
         if (!LEDGER_SORT_FIELDS.contains(sort)) {
             throw new ResponseStatusException(
