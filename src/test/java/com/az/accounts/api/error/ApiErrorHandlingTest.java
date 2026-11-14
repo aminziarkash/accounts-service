@@ -14,6 +14,7 @@ import com.az.accounts.exception.DuplicateEmailException;
 import com.az.accounts.exception.InsufficientFundsException;
 import com.az.accounts.service.AccountService;
 import com.az.accounts.service.CustomerService;
+import com.az.accounts.service.IdempotentTransferService;
 import java.math.BigDecimal;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,7 +30,7 @@ import org.springframework.test.web.servlet.MockMvc;
 class ApiErrorHandlingTest {
 
     @Autowired private MockMvc mockMvc;
-
+    @MockitoBean private IdempotentTransferService transferService;
     @MockitoBean private CustomerService customerService;
     @MockitoBean private AccountService accountService;
 
