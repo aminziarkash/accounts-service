@@ -8,6 +8,10 @@ import com.az.accounts.api.dto.PageResponse;
 import com.az.accounts.api.mapper.AccountMapper;
 import com.az.accounts.domain.Account;
 import com.az.accounts.service.AccountService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -28,6 +32,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
+@Tag(name = "Accounts", description = "Open accounts, deposit, withdraw and read the ledger")
 @RestController
 @RequestMapping("/api/v1/accounts")
 public class AccountController {
@@ -41,6 +46,10 @@ public class AccountController {
         this.mapper = mapper;
     }
 
+    @Operation(summary = "Open an account for a customer")
+    @ApiResponse(responseCode = "201", description = "Account opened, Location header points to it")
+    @ApiResponse(responseCode = "400", description = "Invalid customer id or currency code")
+    @ApiResponse(responseCode = "404", description = "Customer not found")
     @PostMapping
     public ResponseEntity<AccountResponse> open(@Valid @RequestBody OpenAccountRequest request) {
         Account account = accountService.openAccount(request.customerId(), request.currency());
@@ -52,11 +61,23 @@ public class AccountController {
         return ResponseEntity.created(location).body(mapper.toResponse(account));
     }
 
+    @Operation(summary = "Get an account and its balance")
+    @ApiResponse(responseCode = "200", description = "The account")
+    @ApiResponse(responseCode = "404", description = "Account not found")
     @GetMapping("/{id}")
     public AccountResponse get(@PathVariable Long id) {
         return mapper.toResponse(accountService.getAccount(id));
     }
 
+    @Operation(
+            summary = "Deposit money",
+            description =
+                    "Adds the amount to the balance and writes a ledger entry in one transaction.")
+    @ApiResponse(responseCode = "201", description = "The ledger entry that was created")
+    @ApiResponse(
+            responseCode = "400",
+            description = "Amount missing, not positive, or more than 2 decimals")
+    @ApiResponse(responseCode = "404", description = "Account not found")
     @PostMapping("/{id}/deposits")
     @ResponseStatus(HttpStatus.CREATED)
     public LedgerEntryResponse deposit(
@@ -64,6 +85,16 @@ public class AccountController {
         return mapper.toResponse(accountService.deposit(id, request.amount()));
     }
 
+    @Operation(
+            summary = "Withdraw money",
+            description =
+                    "Subtracts the amount from the balance and writes a ledger entry in one transaction.")
+    @ApiResponse(responseCode = "201", description = "The ledger entry that was created")
+    @ApiResponse(
+            responseCode = "400",
+            description = "Amount missing, not positive, or more than 2 decimals")
+    @ApiResponse(responseCode = "404", description = "Account not found")
+    @ApiResponse(responseCode = "422", description = "Insufficient funds")
     @PostMapping("/{id}/withdrawals")
     @ResponseStatus(HttpStatus.CREATED)
     public LedgerEntryResponse withdraw(
@@ -71,13 +102,33 @@ public class AccountController {
         return mapper.toResponse(accountService.withdraw(id, request.amount()));
     }
 
+    @Operation(
+            summary = "List ledger entries of an account",
+            description =
+                    "Paged. Newest first by default; the entry id is always the tie-breaker, so paging is stable.")
+    @ApiResponse(responseCode = "200", description = "One page of ledger entries")
+    @ApiResponse(
+            responseCode = "400",
+            description = "Page size above 100, unknown sort field or direction")
+    @ApiResponse(responseCode = "404", description = "Account not found")
     @GetMapping("/{id}/ledger")
     public PageResponse<LedgerEntryResponse> ledger(
             @PathVariable Long id,
-            @RequestParam(defaultValue = "0") @Min(0) int page,
-            @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size,
-            @RequestParam(defaultValue = "createdAt") String sort,
-            @RequestParam(defaultValue = "desc") String direction) {
+            @Parameter(description = "Zero-based page number")
+                    @RequestParam(defaultValue = "0")
+                    @Min(0)
+                    int page,
+            @Parameter(description = "Page size, 1 to 100")
+                    @RequestParam(defaultValue = "20")
+                    @Min(1)
+                    @Max(100)
+                    int size,
+            @Parameter(description = "Sort field: createdAt or amount")
+                    @RequestParam(defaultValue = "createdAt")
+                    String sort,
+            @Parameter(description = "Sort direction: asc or desc")
+                    @RequestParam(defaultValue = "desc")
+                    String direction) {
 
         if (!LEDGER_SORT_FIELDS.contains(sort)) {
             throw new ResponseStatusException(

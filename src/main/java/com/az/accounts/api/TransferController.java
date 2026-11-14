@@ -3,6 +3,10 @@ package com.az.accounts.api;
 import com.az.accounts.api.dto.TransferRequest;
 import com.az.accounts.api.dto.TransferResponse;
 import com.az.accounts.service.IdempotentTransferService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -14,6 +18,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+@Tag(name = "Transfers", description = "Idempotent money transfers between accounts")
 @RestController
 @RequestMapping("/api/v1/transfers")
 public class TransferController {
@@ -24,10 +29,25 @@ public class TransferController {
         this.transferService = transferService;
     }
 
+    @Operation(
+            summary = "Transfer money between two accounts",
+            description =
+                    "Idempotent: repeating the same Idempotency-Key with the same body returns the"
+                            + " original result and moves money once.")
+    @ApiResponse(responseCode = "201", description = "Transfer completed (or replayed)")
+    @ApiResponse(responseCode = "400", description = "Invalid body or missing Idempotency-Key")
+    @ApiResponse(responseCode = "404", description = "Account not found")
+    @ApiResponse(
+            responseCode = "422",
+            description = "Insufficient funds, or key reused with a different body")
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public TransferResponse transfer(
-            @RequestHeader("Idempotency-Key") @NotBlank @Size(max = 100) String idempotencyKey,
+            @Parameter(description = "Unique key per logical transfer, for example a UUID")
+                    @RequestHeader("Idempotency-Key")
+                    @NotBlank
+                    @Size(max = 100)
+                    String idempotencyKey,
             @Valid @RequestBody TransferRequest request) {
         return new TransferResponse(
                 transferService.transfer(
