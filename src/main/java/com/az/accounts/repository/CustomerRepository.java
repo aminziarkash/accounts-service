@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -25,6 +26,9 @@ public interface CustomerRepository extends JpaRepository<Customer, Long> {
     @Query(
             "select distinct c from Customer c join fetch c.accounts where c.id in :ids order by c.id")
     List<Customer> findAllWithAccountsByIdIn(@Param("ids") List<Long> ids);
+
+    @EntityGraph(attributePaths = "accounts")
+    Optional<Customer> findWithAccountsById(Long id);
 
     Optional<Customer> findByEmail(String email);
 }

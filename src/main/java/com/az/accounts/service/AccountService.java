@@ -1,12 +1,17 @@
 package com.az.accounts.service;
 
 import com.az.accounts.domain.Account;
+import com.az.accounts.domain.Customer;
 import com.az.accounts.domain.LedgerEntry;
 import com.az.accounts.exception.AccountNotFoundException;
+import com.az.accounts.exception.CustomerNotFoundException;
 import com.az.accounts.repository.AccountRepository;
+import com.az.accounts.repository.CustomerRepository;
 import com.az.accounts.repository.LedgerEntryRepository;
 import java.math.BigDecimal;
 import java.util.UUID;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -15,11 +20,15 @@ public class AccountService {
 
     private final AccountRepository accountRepository;
     private final LedgerEntryRepository ledgerEntryRepository;
+    private final CustomerRepository customerRepository;
 
     public AccountService(
-            AccountRepository accountRepository, LedgerEntryRepository ledgerEntryRepository) {
+            AccountRepository accountRepository,
+            LedgerEntryRepository ledgerEntryRepository,
+            CustomerRepository customerRepository) {
         this.accountRepository = accountRepository;
         this.ledgerEntryRepository = ledgerEntryRepository;
+        this.customerRepository = customerRepository;
     }
 
     @Transactional
@@ -57,6 +66,30 @@ public class AccountService {
         ledgerEntryRepository.save(from.withdraw(amount, transferReference));
         ledgerEntryRepository.save(to.deposit(amount, transferReference));
         return transferReference;
+    }
+
+    @Transactional
+    public Account openAccount(Long customerId, String currency) {
+        Customer customer =
+                customerRepository
+                        .findById(customerId)
+                        .orElseThrow(() -> new CustomerNotFoundException(customerId));
+        Account account = new Account(currency);
+        customer.addAccount(account);
+        return accountRepository.save(account);
+    }
+
+    @Transactional(readOnly = true)
+    public Account getAccount(Long id) {
+        return accountRepository.findById(id).orElseThrow(() -> new AccountNotFoundException(id));
+    }
+
+    @Transactional(readOnly = true)
+    public Page<LedgerEntry> getLedger(Long accountId, Pageable pageable) {
+        if (!accountRepository.existsById(accountId)) {
+            throw new AccountNotFoundException(accountId);
+        }
+        return ledgerEntryRepository.findByAccountIdOrderByCreatedAtDesc(accountId, pageable);
     }
 
     private Account lockAccount(Long id) {
