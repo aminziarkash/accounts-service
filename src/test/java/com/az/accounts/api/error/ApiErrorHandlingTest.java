@@ -1,5 +1,6 @@
 package com.az.accounts.api.error;
 
+import com.az.accounts.service.AccessPolicy;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -36,6 +37,7 @@ import org.springframework.test.web.servlet.MockMvc;
 class ApiErrorHandlingTest {
 
     @Autowired private MockMvc mockMvc;
+    @MockitoBean private AccessPolicy accessPolicy;
     @MockitoBean private IdempotentTransferService transferService;
     @MockitoBean private IdempotentAccountService idempotentAccountService;
     @MockitoBean private CustomerService customerService;
@@ -92,7 +94,7 @@ class ApiErrorHandlingTest {
 
     @Test
     void duplicateEmailReturns409() throws Exception {
-        when(customerService.create("a@test.com", "A", "B"))
+        when(customerService.create("user", "a@test.com", "A", "B"))
                 .thenThrow(new DuplicateEmailException("a@test.com"));
 
         mockMvc.perform(

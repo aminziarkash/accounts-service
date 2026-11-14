@@ -16,4 +16,6 @@ public interface AccountRepository extends JpaRepository<Account, Long> {
     Optional<Account> findByIdForUpdate(@Param("id") Long id);
 
     List<Account> findByCustomerId(Long customerId);
+
+    boolean existsByIdAndCustomerOwnerSubject(Long id, String ownerSubject);
 }

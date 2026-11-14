@@ -1,5 +1,6 @@
 package com.az.accounts.api;
 
+import com.az.accounts.service.AccessPolicy;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -33,6 +34,7 @@ import org.springframework.test.web.servlet.MockMvc;
 class LedgerPagingApiTest {
 
     @Autowired private MockMvc mockMvc;
+    @MockitoBean private AccessPolicy accessPolicy;
     @MockitoBean private IdempotentTransferService transferService;
     @MockitoBean private IdempotentAccountService idempotentAccountService;
     @MockitoBean private CustomerService customerService;

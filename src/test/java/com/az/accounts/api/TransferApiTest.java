@@ -1,5 +1,6 @@
 package com.az.accounts.api;
 
+import com.az.accounts.service.AccessPolicy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
@@ -35,6 +36,7 @@ class TransferApiTest {
 
     @Autowired private MockMvc mockMvc;
 
+    @MockitoBean private AccessPolicy accessPolicy;
     @MockitoBean private CustomerService customerService;
     @MockitoBean private AccountService accountService;
     @MockitoBean private IdempotentTransferService transferService;
