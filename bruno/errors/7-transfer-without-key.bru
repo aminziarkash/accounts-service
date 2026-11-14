@@ -1,0 +1,15 @@
+meta {
+  name: Transfer without Idempotency-Key
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{baseUrl}}/api/v1/transfers
+  body: json
+  auth: none
+}
+
+body:json {
+  {"fromAccountId":{{accountA}},"toAccountId":{{accountA}},"amount":"5.00"}
+}
