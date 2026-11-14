@@ -23,7 +23,8 @@ Built:
   size and only sorts by whitelisted fields.
 - **Safe retries.** Deposits, withdrawals and transfers need an `Idempotency-Key`. The key is stored in PostgreSQL in the same transaction as the
   transfer, so a repeated request returns the first result and money moves once, even for concurrent duplicates. Keys expire
-  after 24 hours and a scheduled job deletes them.
+  after 24 hours and a scheduled job deletes them. A key belongs to its caller, so users can send the same header
+  value without interfering, and nobody can replay someone else's key.
 - **Cross-cutting basics.** A correlation id filter, request timing interceptor, configurable CORS and an `@Audited`
   aspect for money operations.
 - **Documented API.** OpenAPI docs and Swagger UI generated with springdoc.
@@ -51,7 +52,7 @@ Planned:
 | Build and quality    | Maven wrapper, Spotless (google-java-format), GitHub Actions CI                                   |
 | Local tooling        | Docker Compose, Keycloak, Dockerfile, Bruno collection in `bruno/`                                |
 
-**Planned:** JWT resource server (Spring Security), Caffeine caching, Kafka with a transactional outbox, Resilience4j,
+**Planned:** Caffeine caching, Kafka with a transactional outbox, Resilience4j,
 Micrometer and Prometheus.
 
 ## Run it
@@ -128,7 +129,7 @@ The layer rules are enforced by ArchUnit tests, so the build fails if a controll
 - [x] Foundation, CI
 - [x] Persistence and transactions
 - [x] REST API (validation, error handling, idempotent deposits, withdrawals and transfers, OpenAPI)
-- [ ] Security (JWT)
+- [x] Security (Keycloak, JWT resource server, roles, ownership, per-caller idempotency keys)
 - [ ] Caching
 - [ ] Event-driven core (outbox, Kafka, idempotent consumer)
 - [ ] Failure handling, schema evolution, read model
@@ -136,8 +137,6 @@ The layer rules are enforced by ArchUnit tests, so the build fails if a controll
 
 ## Known limits
 
-- Idempotency keys are global. With security, they will be stored per caller (`client id + key`), so one user can
-  never replay another user's key.
 - A key is forgotten after 24 hours; a retry after that counts as a new request.
 - A busy account answers `503` with `Retry-After` after waiting 3 seconds for its row lock.
 
