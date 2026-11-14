@@ -6,11 +6,14 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
+import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
 import org.springframework.aop.aspectj.annotation.AspectJProxyFactory;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 class AuditAspectTest {
 
@@ -48,6 +51,36 @@ class AuditAspectTest {
     @AfterEach
     void tearDown() {
         auditLogger.detachAppender(appender);
+        SecurityContextHolder.clearContext();
+    }
+
+    @Test
+    void logsTheLoggedInUser() {
+        SecurityContextHolder.getContext()
+                .setAuthentication(
+                        new UsernamePasswordAuthenticationToken("alice", "n/a", List.of()));
+
+        proxy.ok(5L);
+
+        assertThat(appender.list.get(0).getFormattedMessage()).contains("user=alice");
+    }
+
+    @Test
+    void logsSystemWhenNobodyIsLoggedIn() {
+        proxy.ok(5L);
+
+        assertThat(appender.list.get(0).getFormattedMessage()).contains("user=system");
+    }
+
+    @Test
+    void failuresNameTheUserToo() {
+        SecurityContextHolder.getContext()
+                .setAuthentication(
+                        new UsernamePasswordAuthenticationToken("bob", "n/a", List.of()));
+
+        assertThatThrownBy(() -> proxy.failing()).isInstanceOf(IllegalStateException.class);
+
+        assertThat(appender.list.get(0).getFormattedMessage()).contains("user=bob");
     }
 
     @Test
