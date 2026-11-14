@@ -1,6 +1,5 @@
 package com.az.accounts.api.error;
 
-import com.az.accounts.service.AccessPolicy;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -16,7 +15,9 @@ import com.az.accounts.exception.AccountNotFoundException;
 import com.az.accounts.exception.DuplicateEmailException;
 import com.az.accounts.exception.InsufficientFundsException;
 import com.az.accounts.exception.InvalidOperationException;
+import com.az.accounts.service.AccessPolicy;
 import com.az.accounts.service.AccountService;
+import com.az.accounts.service.CurrentUser;
 import com.az.accounts.service.CustomerService;
 import com.az.accounts.service.IdempotentAccountService;
 import com.az.accounts.service.IdempotentTransferService;
@@ -121,7 +122,8 @@ class ApiErrorHandlingTest {
 
     @Test
     void insufficientFundsReturns422() throws Exception {
-        when(idempotentAccountService.withdraw("k-1", 1L, new BigDecimal("50.00")))
+        when(idempotentAccountService.withdraw(
+                        new CurrentUser("user", false), "k-1", 1L, new BigDecimal("50.00")))
                 .thenThrow(
                         new InsufficientFundsException(
                                 1L, new BigDecimal("10.00"), new BigDecimal("50.00")));

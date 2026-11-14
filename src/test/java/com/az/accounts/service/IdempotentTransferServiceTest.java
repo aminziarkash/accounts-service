@@ -34,6 +34,8 @@ import org.springframework.context.annotation.Import;
 @Import(TestcontainersConfiguration.class)
 class IdempotentTransferServiceTest {
 
+    private static final CurrentUser USER = new CurrentUser("user-1", false);
+
     @Autowired private IdempotentTransferService transferService;
     @Autowired private AccountService accountService;
     @Autowired private AccountRepository accountRepository;
@@ -73,8 +75,9 @@ class IdempotentTransferServiceTest {
 
     @Test
     void replayWithSameKeyAndBodyReturnsTheSameResultAndMovesMoneyOnce() {
-        UUID first = transferService.transfer("key-1", fromId, toId, new BigDecimal("10.00"));
-        UUID replay = transferService.transfer("key-1", fromId, toId, new BigDecimal("10.00"));
+        UUID first = transferService.transfer(USER, "key-1", fromId, toId, new BigDecimal("10.00"));
+        UUID replay =
+                transferService.transfer(USER, "key-1", fromId, toId, new BigDecimal("10.00"));
 
         assertThat(replay).isEqualTo(first);
         assertThat(balance(fromId)).isEqualByComparingTo("90.00");
@@ -83,8 +86,8 @@ class IdempotentTransferServiceTest {
 
     @Test
     void sameAmountWrittenDifferentlyIsTheSameRequest() {
-        UUID first = transferService.transfer("key-2", fromId, toId, new BigDecimal("10.00"));
-        UUID replay = transferService.transfer("key-2", fromId, toId, new BigDecimal("10.0"));
+        UUID first = transferService.transfer(USER, "key-2", fromId, toId, new BigDecimal("10.00"));
+        UUID replay = transferService.transfer(USER, "key-2", fromId, toId, new BigDecimal("10.0"));
 
         assertThat(replay).isEqualTo(first);
         assertThat(balance(fromId)).isEqualByComparingTo("90.00");
@@ -92,10 +95,11 @@ class IdempotentTransferServiceTest {
 
     @Test
     void sameKeyWithDifferentBodyIsRejectedAndMovesNothingMore() {
-        transferService.transfer("key-3", fromId, toId, new BigDecimal("10.00"));
+        transferService.transfer(USER, "key-3", fromId, toId, new BigDecimal("10.00"));
 
         assertThatThrownBy(() ->
-                        transferService.transfer("key-3", fromId, toId, new BigDecimal("20.00")))
+                        transferService.transfer(
+                                USER, "key-3", fromId, toId, new BigDecimal("20.00")))
                 .isInstanceOf(IdempotencyKeyReuseException.class);
 
         assertThat(balance(fromId)).isEqualByComparingTo("90.00");
@@ -103,8 +107,8 @@ class IdempotentTransferServiceTest {
 
     @Test
     void differentKeysAreDifferentTransfers() {
-        transferService.transfer("key-a", fromId, toId, new BigDecimal("10.00"));
-        transferService.transfer("key-b", fromId, toId, new BigDecimal("10.00"));
+        transferService.transfer(USER, "key-a", fromId, toId, new BigDecimal("10.00"));
+        transferService.transfer(USER, "key-b", fromId, toId, new BigDecimal("10.00"));
 
         assertThat(balance(fromId)).isEqualByComparingTo("80.00");
         assertThat(balance(toId)).isEqualByComparingTo("20.00");
@@ -113,14 +117,30 @@ class IdempotentTransferServiceTest {
     @Test
     void failedTransferIsNotStoredSoTheKeyCanBeRetried() {
         assertThatThrownBy(() ->
-                        transferService.transfer("key-4", fromId, toId, new BigDecimal("1000.00")))
+                        transferService.transfer(
+                                USER, "key-4", fromId, toId, new BigDecimal("1000.00")))
                 .isInstanceOf(InsufficientFundsException.class);
 
         assertThat(idempotencyRecordRepository.findById("key-4")).isEmpty();
 
-        UUID retry = transferService.transfer("key-4", fromId, toId, new BigDecimal("10.00"));
+        UUID retry = transferService.transfer(USER, "key-4", fromId, toId, new BigDecimal("10.00"));
         assertThat(retry).isNotNull();
         assertThat(balance(fromId)).isEqualByComparingTo("90.00");
+    }
+
+    @Test
+    void sameKeyFromDifferentCallersIsNotTheSameRequest() {
+        CurrentUser other = new CurrentUser("someone-else", false);
+
+        UUID first =
+                transferService.transfer(USER, "shared-key", fromId, toId, new BigDecimal("10.00"));
+        UUID second =
+                transferService.transfer(
+                        other, "shared-key", fromId, toId, new BigDecimal("10.00"));
+
+        // no replay across callers: both transfers ran
+        assertThat(second).isNotEqualTo(first);
+        assertThat(balance(fromId)).isEqualByComparingTo("80.00");
     }
 
     @Test
@@ -134,7 +154,7 @@ class IdempotentTransferServiceTest {
                     pool.submit(() -> {
                         start.await();
                         return transferService.transfer(
-                                "key-race", fromId, toId, new BigDecimal("10.00"));
+                                USER, "key-race", fromId, toId, new BigDecimal("10.00"));
                     }));
         }
         start.countDown();
