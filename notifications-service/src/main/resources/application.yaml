@@ -1,0 +1,16 @@
+spring:
+  application:
+    name: notifications-service
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5433/notifications}
+    username: ${SPRING_DATASOURCE_USERNAME:accounts}
+    password: ${SPRING_DATASOURCE_PASSWORD:accounts}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+
+server:
+  port: 8090
