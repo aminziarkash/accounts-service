@@ -11,12 +11,22 @@ spring:
     open-in-view: false
     hibernate:
       ddl-auto: validate
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      acks: all
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      properties:
+        enable.idempotence: true
 
 logging:
   pattern:
     correlation: "[%X{correlationId:-}] "
 
 app:
+  outbox:
+    topic: accounts.events
   security:
     # Keycloak realm. Override both in a container, where the host name differs.
     issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8180/realms/accounts}
