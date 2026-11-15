@@ -38,6 +38,7 @@ class AccountServiceTest {
     @Autowired private AccountService accountService;
     @Autowired private AccountRepository accountRepository;
     @Autowired private CustomerRepository customerRepository;
+    @Autowired private OutboxService outboxService;
     @Autowired private LedgerEntryRepository ledgerEntryRepository;
 
     private Long accountId;

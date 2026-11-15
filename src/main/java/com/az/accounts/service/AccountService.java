@@ -10,10 +10,12 @@ import com.az.accounts.exception.InvalidOperationException;
 import com.az.accounts.repository.AccountRepository;
 import com.az.accounts.repository.CustomerRepository;
 import com.az.accounts.repository.LedgerEntryRepository;
+import com.az.accounts.service.event.MoneyDeposited;
 import com.az.accounts.service.view.AccountView;
 import com.az.accounts.service.view.LedgerEntryView;
 import com.az.accounts.service.view.ViewMapper;
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -26,16 +28,19 @@ public class AccountService {
     private final AccountRepository accountRepository;
     private final LedgerEntryRepository ledgerEntryRepository;
     private final CustomerRepository customerRepository;
+    private final OutboxService outboxService;
     private final ViewMapper mapper;
 
     public AccountService(
             AccountRepository accountRepository,
             LedgerEntryRepository ledgerEntryRepository,
             CustomerRepository customerRepository,
+            OutboxService outboxService,
             ViewMapper mapper) {
         this.accountRepository = accountRepository;
         this.ledgerEntryRepository = ledgerEntryRepository;
         this.customerRepository = customerRepository;
+        this.outboxService = outboxService;
         this.mapper = mapper;
     }
 
@@ -44,7 +49,23 @@ public class AccountService {
     public LedgerEntryView deposit(Long accountId, BigDecimal amount) {
         Account account = lockAccount(accountId);
         LedgerEntry entry = account.deposit(amount);
-        return mapper.toView(ledgerEntryRepository.save(entry));
+        LedgerEntryView view = mapper.toView(ledgerEntryRepository.save(entry));
+        MoneyDeposited payload =
+                new MoneyDeposited(
+                        accountId,
+                        view.id(),
+                        view.amount(),
+                        account.getCurrency(),
+                        view.balanceAfter(),
+                        Instant.now());
+        outboxService.record(
+                "Account",
+                String.valueOf(
+                        accountId), // this is the Kafka message key so all events for 1 account
+                // stay in order
+                "MoneyDeposited",
+                payload);
+        return view;
     }
 
     @Audited("WITHDRAW")
