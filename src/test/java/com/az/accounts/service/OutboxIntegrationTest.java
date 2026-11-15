@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.az.accounts.TestcontainersConfiguration;
+import com.az.accounts.exception.InsufficientFundsException;
 import com.az.accounts.exception.InvalidOperationException;
 import java.math.BigDecimal;
 import java.util.List;
@@ -45,7 +46,7 @@ class OutboxIntegrationTest {
 
         var rows = eventsFor(accountId);
         assertThat(rows).hasSize(1);
-        assertThat(rows.get(0).get("event_type")).isEqualTo("MoneyDeposited");
+        assertThat(rows.get(0).get("event_type")).isEqualTo("MONEY_DEPOSITED");
         assertThat(rows.get(0).get("published_at")).isNull();
         assertThat(rows.get(0).get("payload").toString()).contains("25.00");
     }
@@ -56,6 +57,33 @@ class OutboxIntegrationTest {
 
         assertThatThrownBy(() -> accountService.deposit(accountId, new BigDecimal("-5")))
                 .isInstanceOf(InvalidOperationException.class);
+
+        assertThat(eventsFor(accountId)).isEmpty();
+    }
+
+    @Test
+    void withdrawWritesOneUnpublishedEvent() {
+        Long accountId = newAccount();
+        accountService.deposit(accountId, new BigDecimal("100.00"));
+
+        accountService.withdraw(accountId, new BigDecimal("30.00"));
+
+        var rows =
+                jdbc.queryForList(
+                        "select payload, published_at from outbox_events"
+                                + " where aggregate_id = ? and event_type = 'MONEY_WITHDRAWN'",
+                        String.valueOf(accountId));
+        assertThat(rows).hasSize(1);
+        assertThat(rows.get(0).get("published_at")).isNull();
+        assertThat(rows.get(0).get("payload").toString()).contains("30.00").contains("70.00");
+    }
+
+    @Test
+    void rejectedWithdrawWritesNoEvent() {
+        Long accountId = newAccount();
+
+        assertThatThrownBy(() -> accountService.withdraw(accountId, new BigDecimal("10.00")))
+                .isInstanceOf(InsufficientFundsException.class);
 
         assertThat(eventsFor(accountId)).isEmpty();
     }

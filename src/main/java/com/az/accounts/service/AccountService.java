@@ -2,7 +2,9 @@ package com.az.accounts.service;
 
 import com.az.accounts.audit.Audited;
 import com.az.accounts.domain.Account;
+import com.az.accounts.domain.AggregateType;
 import com.az.accounts.domain.Customer;
+import com.az.accounts.domain.EventType;
 import com.az.accounts.domain.LedgerEntry;
 import com.az.accounts.exception.AccountNotFoundException;
 import com.az.accounts.exception.CustomerNotFoundException;
@@ -11,6 +13,7 @@ import com.az.accounts.repository.AccountRepository;
 import com.az.accounts.repository.CustomerRepository;
 import com.az.accounts.repository.LedgerEntryRepository;
 import com.az.accounts.service.event.MoneyDeposited;
+import com.az.accounts.service.event.MoneyWithdrawn;
 import com.az.accounts.service.view.AccountView;
 import com.az.accounts.service.view.LedgerEntryView;
 import com.az.accounts.service.view.ViewMapper;
@@ -49,23 +52,23 @@ public class AccountService {
     public LedgerEntryView deposit(Long accountId, BigDecimal amount) {
         Account account = lockAccount(accountId);
         LedgerEntry entry = account.deposit(amount);
-        LedgerEntryView view = mapper.toView(ledgerEntryRepository.save(entry));
+        LedgerEntryView ledgerEntryView = mapper.toView(ledgerEntryRepository.save(entry));
         MoneyDeposited payload =
                 new MoneyDeposited(
                         accountId,
-                        view.id(),
-                        view.amount(),
+                        ledgerEntryView.id(),
+                        ledgerEntryView.amount(),
                         account.getCurrency(),
-                        view.balanceAfter(),
+                        ledgerEntryView.balanceAfter(),
                         Instant.now());
         outboxService.record(
-                "Account",
+                AggregateType.ACCOUNT,
                 String.valueOf(
                         accountId), // this is the Kafka message key so all events for 1 account
                 // stay in order
-                "MoneyDeposited",
+                EventType.MONEY_DEPOSITED,
                 payload);
-        return view;
+        return ledgerEntryView;
     }
 
     @Audited("WITHDRAW")
@@ -73,7 +76,21 @@ public class AccountService {
     public LedgerEntryView withdraw(Long accountId, BigDecimal amount) {
         Account account = lockAccount(accountId);
         LedgerEntry entry = account.withdraw(amount);
-        return mapper.toView(ledgerEntryRepository.save(entry));
+        LedgerEntryView ledgerEntryView = mapper.toView(ledgerEntryRepository.save(entry));
+        MoneyWithdrawn payload =
+                new MoneyWithdrawn(
+                        accountId,
+                        ledgerEntryView.id(),
+                        ledgerEntryView.amount(),
+                        account.getCurrency(),
+                        ledgerEntryView.balanceAfter(),
+                        Instant.now());
+        outboxService.record(
+                AggregateType.ACCOUNT,
+                String.valueOf(accountId),
+                EventType.MONEY_WITHDRAWN,
+                payload);
+        return ledgerEntryView;
     }
 
     @Audited("TRANSFER")

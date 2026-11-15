@@ -1,5 +1,7 @@
 package com.az.accounts.service;
 
+import com.az.accounts.domain.AggregateType;
+import com.az.accounts.domain.EventType;
 import com.az.accounts.domain.OutboxEvent;
 import com.az.accounts.repository.OutboxEventRepository;
 import org.springframework.stereotype.Service;
@@ -19,7 +21,8 @@ public class OutboxService {
     }
 
     @Transactional(propagation = Propagation.MANDATORY)
-    public void record(String aggregateType, String aggregateId, String eventType, Object payload) {
+    public void record(
+            AggregateType aggregateType, String aggregateId, EventType eventType, Object payload) {
         String json = jsonMapper.writeValueAsString(payload);
         repository.save(new OutboxEvent(aggregateType, aggregateId, eventType, json));
     }

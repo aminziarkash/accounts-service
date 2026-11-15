@@ -2,6 +2,8 @@ package com.az.accounts.domain;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -21,14 +23,16 @@ public class OutboxEvent {
     @Column(nullable = false, unique = true)
     private UUID eventId;
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private String aggregateType;
+    private AggregateType aggregateType;
 
     @Column(nullable = false)
     private String aggregateId;
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private String eventType;
+    private EventType eventType;
 
     @Column(nullable = false, columnDefinition = "text")
     private String payload;
@@ -41,7 +45,8 @@ public class OutboxEvent {
 
     protected OutboxEvent() {}
 
-    public OutboxEvent(String aggregateType, String aggregateId, String eventType, String payload) {
+    public OutboxEvent(
+            AggregateType aggregateType, String aggregateId, EventType eventType, String payload) {
         this.eventId = UUID.randomUUID();
         this.aggregateType = aggregateType;
         this.aggregateId = aggregateId;
@@ -61,7 +66,7 @@ public class OutboxEvent {
         return eventId;
     }
 
-    public String getAggregateType() {
+    public AggregateType getAggregateType() {
         return aggregateType;
     }
 
@@ -69,7 +74,7 @@ public class OutboxEvent {
         return aggregateId;
     }
 
-    public String getEventType() {
+    public EventType getEventType() {
         return eventType;
     }
 
