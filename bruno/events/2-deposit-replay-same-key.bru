@@ -1,0 +1,28 @@
+meta {
+  name: Deposit replay (fixed key, send twice)
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/v1/accounts/{{accountA}}/deposits
+  body: json
+  auth: inherit
+}
+
+headers {
+  Idempotency-Key: replay-deposit-1
+}
+
+body:json {
+  {
+    "amount": "10.00"
+  }
+}
+
+docs {
+  Send this twice. Both answers are identical but only ONE event is written, because the
+  replay returns the first result without running the deposit again.
+  To run it again within 24 hours, change the key (replay-deposit-2). The same key with a
+  different amount or account answers 422.
+}

@@ -1,0 +1,25 @@
+meta {
+  name: Withdraw replay (fixed key, send twice)
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/api/v1/accounts/{{accountA}}/withdrawals
+  body: json
+  auth: inherit
+}
+
+headers {
+  Idempotency-Key: replay-withdraw-1
+}
+
+body:json {
+  {
+    "amount": "5.00"
+  }
+}
+
+docs {
+  Send twice: one MONEY_WITHDRAWN event only. Change the key to run it again.
+}
