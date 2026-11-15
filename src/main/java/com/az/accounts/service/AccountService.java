@@ -14,6 +14,7 @@ import com.az.accounts.repository.CustomerRepository;
 import com.az.accounts.repository.LedgerEntryRepository;
 import com.az.accounts.service.event.MoneyDeposited;
 import com.az.accounts.service.event.MoneyWithdrawn;
+import com.az.accounts.service.event.TransferCompleted;
 import com.az.accounts.service.view.AccountView;
 import com.az.accounts.service.view.LedgerEntryView;
 import com.az.accounts.service.view.ViewMapper;
@@ -114,6 +115,22 @@ public class AccountService {
         UUID transferReference = UUID.randomUUID();
         ledgerEntryRepository.save(from.withdraw(amount, transferReference));
         ledgerEntryRepository.save(to.deposit(amount, transferReference));
+
+        // record the event in the outbox
+        TransferCompleted payload =
+                new TransferCompleted(
+                        transferReference,
+                        fromId,
+                        toId,
+                        amount,
+                        first.getCurrency(),
+                        Instant.now());
+        outboxService.record(
+                AggregateType.ACCOUNT,
+                String.valueOf(fromId),
+                EventType.TRANSFER_COMPLETED,
+                payload);
+
         return transferReference;
     }
 
