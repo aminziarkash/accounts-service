@@ -19,6 +19,7 @@ spring:
       value-serializer: org.apache.kafka.common.serialization.StringSerializer
       properties:
         enable.idempotence: true
+        max.block.ms: 5000 # Without max.block.ms, a send to a dead broker blocks for 60 seconds by default.
 
 logging:
   pattern:
@@ -27,6 +28,9 @@ logging:
 app:
   outbox:
     topic: accounts.events
+    batch-size: 50
+    send-timeout: PT5S
+    poll-interval: PT0.5S
   security:
     # Keycloak realm. Override both in a container, where the host name differs.
     issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8180/realms/accounts}

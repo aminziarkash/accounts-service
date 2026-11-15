@@ -6,5 +6,5 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 
 @Configuration
 @EnableScheduling
-@EnableConfigurationProperties(IdempotencyProperties.class)
+@EnableConfigurationProperties({IdempotencyProperties.class, OutboxProperties.class})
 public class SchedulingConfig {}
