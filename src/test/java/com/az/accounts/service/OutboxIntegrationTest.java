@@ -87,4 +87,40 @@ class OutboxIntegrationTest {
 
         assertThat(eventsFor(accountId)).isEmpty();
     }
+
+    @Test
+    void transferWritesOneEventForTheWholeTransfer() {
+        Long from = newAccount();
+        Long to = newAccount();
+        accountService.deposit(from, new BigDecimal("100.00"));
+
+        UUID reference = accountService.transfer(from, to, new BigDecimal("40.00"));
+
+        var rows =
+                jdbc.queryForList(
+                        "select aggregate_id, payload from outbox_events where event_type = 'TRANSFER_COMPLETED'"
+                                + " and payload like ?",
+                        "%" + reference + "%");
+        assertThat(rows).hasSize(1);
+        assertThat(rows.get(0).get("aggregate_id")).isEqualTo(String.valueOf(from));
+        assertThat(rows.get(0).get("payload").toString())
+                .contains("40.00")
+                .contains("\"toAccountId\":" + to);
+    }
+
+    @Test
+    void rejectedTransferWritesNoTransferEvent() {
+        Long from = newAccount();
+        Long to = newAccount();
+
+        assertThatThrownBy(() -> accountService.transfer(from, to, new BigDecimal("10.00")))
+                .isInstanceOf(InsufficientFundsException.class);
+
+        var rows =
+                jdbc.queryForList(
+                        "select 1 from outbox_events where event_type = 'TRANSFER_COMPLETED'"
+                                + " and aggregate_id = ?",
+                        String.valueOf(from));
+        assertThat(rows).isEmpty();
+    }
 }
