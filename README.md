@@ -1,8 +1,8 @@
 # accounts-service
 
 Banking accounts service built with Spring Boot 4, PostgreSQL and Testcontainers: ledger, safe money movement under
-concurrency, a validated REST API and idempotent money operations. A transactional outbox with Kafka, JWT security and caching
-are planned.
+concurrency, a validated REST API, idempotent money operations, JWT security with Keycloak and reliable events through a
+transactional outbox to Kafka. Caching and an events consumer service are planned.
 
 ![CI](https://github.com/aminziarkash/accounts-service/actions/workflows/ci.yml/badge.svg)
 
@@ -28,12 +28,18 @@ Built:
 - **Cross-cutting basics.** A correlation id filter, request timing interceptor, configurable CORS and an `@Audited`
   aspect for money operations.
 - **Documented API.** OpenAPI docs and Swagger UI generated with springdoc.
+- **Secure by default.** A stateless OAuth2 resource server validating Keycloak tokens, roles from the token and
+  ownership checks, so users only see their own customers and accounts.
+- **Reliable events.** Every deposit, withdrawal and transfer writes an event to an `outbox_events` table in the same
+  transaction as the money movement. A relay publishes the rows to Kafka (`accounts.events`), keyed by account id so
+  one account's events stay in order. Delivery is at-least-once: a crash can send an event twice, so consumers must
+  ignore duplicates by `event-id`.
 
 Planned:
 
-- **Reliable events.** A transactional outbox publishing domain events to Kafka, with idempotent consumers and a
+- **Events consumer.** A second Spring Boot service, `notifications-service`, with an idempotent consumer and a
   dead-letter topic.
-- **Secure by default.** A stateless JWT resource server with ownership checks.
+- **Caching.** Caffeine for profile reads, never for balances.
 
 ## Stack
 
@@ -50,15 +56,15 @@ Planned:
 | Concurrency          | Pessimistic locking with ordered locks for balances, optimistic locking (`@Version`) for profiles |
 | Testing              | JUnit 5, AssertJ, Mockito, MockMvc, Testcontainers (real PostgreSQL, no H2), ArchUnit                |
 | Build and quality    | Maven wrapper, Spotless (google-java-format), GitHub Actions CI                                   |
+| Messaging            | Transactional outbox, Kafka (KRaft, single broker locally), Spring for Apache Kafka               |
 | Local tooling        | Docker Compose, Keycloak, Dockerfile, Bruno collection in `bruno/`                                |
 
-**Planned:** Caffeine caching, Kafka with a transactional outbox, Resilience4j,
-Micrometer and Prometheus.
+**Planned:** Caffeine caching, an idempotent Kafka consumer, Resilience4j, Micrometer and Prometheus.
 
 ## Run it
 
 ```bash
-docker compose up -d                                          # PostgreSQL on 5433, Keycloak on 8180
+docker compose up -d                                          # PostgreSQL on 5433, Keycloak on 8180, Kafka on 9092
 ./mvnw spring-boot:run -Dspring-boot.run.profiles=local       # API on http://localhost:8080
 ./mvnw verify                                                 # unit and integration tests
 ```
@@ -74,6 +80,22 @@ Keycloak runs in Docker Compose and imports the `accounts` realm from `keycloak/
 `ADMIN`, users `alice`, `bob` (USER) and `admin` (USER and ADMIN) with the username as the password, and a public client
 `accounts-web` for the future React app (Authorization Code with PKCE). These are local development credentials only.
 Admin console: http://localhost:8180 (admin / admin).
+
+### Events
+
+Create the topic once after the first `docker compose up`, then watch the events arrive:
+
+```bash
+docker exec accounts-kafka /opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 \
+  --create --topic accounts.events --partitions 3 --replication-factor 1
+
+docker exec -it accounts-kafka /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 \
+  --topic accounts.events --from-beginning --property print.key=true --property print.headers=true
+```
+
+Make a deposit with Bruno and the event shows up within a second. The `bruno/events` folder has requests for replays
+and transfers. Stop Kafka, make a deposit, start Kafka again: the API keeps working and the events go out afterwards,
+in order. The relay settings (`batch-size`, `send-timeout`, `poll-interval`) are under `app.outbox` in `application.yaml`.
 
 API docs: http://localhost:8080/swagger-ui.html (OpenAPI JSON at `/v3/api-docs`).
 
@@ -111,6 +133,11 @@ A valid token only proves who you are, so one `AccessPolicy` also checks that th
 may see everything). Each customer stores the Keycloak id of its owner, taken from the token and never from the request.
 Someone else's customer or account answers `404`, the same as an id that does not exist, so ids cannot be probed.
 You can send money to anyone's account, but only out of your own.
+Events use the transactional outbox pattern. A deposit, withdrawal or transfer saves an `outbox_events` row in the same
+transaction as the ledger entries, so an event exists exactly when the money moved. A scheduled relay reads unpublished
+rows with `SELECT ... FOR UPDATE SKIP LOCKED` (so several instances never publish the same row), sends them to Kafka in
+order, waits for the broker to confirm and marks them published. If Kafka is down the API keeps working and the events
+wait in the table. Event ids travel as a Kafka header so consumers can ignore duplicates.
 The layer rules are enforced by ArchUnit tests, so the build fails if a controller touches an entity or a repository.
 
 [Add the diagram here once built: a Mermaid diagram of accounts-service, PostgreSQL, outbox relay, Kafka, notifications-service.]
@@ -131,7 +158,10 @@ The layer rules are enforced by ArchUnit tests, so the build fails if a controll
 - [x] REST API (validation, error handling, idempotent deposits, withdrawals and transfers, OpenAPI)
 - [x] Security (Keycloak, JWT resource server, roles, ownership, per-caller idempotency keys)
 - [ ] Caching
-- [ ] Event-driven core (outbox, Kafka, idempotent consumer)
+- [ ] Event-driven core
+  - [x] Transactional outbox and Kafka relay
+  - [ ] `notifications-service` with an idempotent consumer
+  - [ ] Retries and a dead-letter topic
 - [ ] Failure handling, schema evolution, read model
 - [ ] Observability and delivery
 
@@ -139,10 +169,16 @@ The layer rules are enforced by ArchUnit tests, so the build fails if a controll
 
 - A key is forgotten after 24 hours; a retry after that counts as a new request.
 - A busy account answers `503` with `Retry-After` after waiting 3 seconds for its row lock.
+- Events are delivered at least once and in order per account, not exactly once. Consumers must ignore duplicates.
+- The relay polls the outbox, so an event can be delayed by up to the poll interval (0.5 seconds by default). Change
+  data capture with Debezium would remove the polling, at the cost of running Kafka Connect.
+- Published outbox rows are not deleted yet.
+- Kafka advertises `localhost:9092`, so the service reaches it from the host but not from a container started with
+  `docker run`. Run the app on the host while working with Kafka.
 
 ## Out of scope
 
-A real OAuth2 authorization server, Kubernetes manifests, and a UI.
+Kubernetes manifests and a UI.
 
 ## License
 
