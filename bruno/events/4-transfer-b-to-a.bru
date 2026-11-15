@@ -1,0 +1,28 @@
+meta {
+  name: Transfer B to A
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/api/v1/transfers
+  body: json
+  auth: inherit
+}
+
+headers {
+  Idempotency-Key: {{$guid}}
+}
+
+body:json {
+  {
+    "fromAccountId": {{accountB}},
+    "toAccountId": {{accountA}},
+    "amount": "5.00"
+  }
+}
+
+docs {
+  The opposite direction of the main Transfer request. Run both in a row to see the ordered
+  locks at work. The event key is the source account (B here).
+}

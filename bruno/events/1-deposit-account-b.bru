@@ -1,0 +1,26 @@
+meta {
+  name: Deposit into account B
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/v1/accounts/{{accountB}}/deposits
+  body: json
+  auth: inherit
+}
+
+headers {
+  Idempotency-Key: {{$guid}}
+}
+
+body:json {
+  {
+    "amount": "50.00"
+  }
+}
+
+docs {
+  Writes one MONEY_DEPOSITED event with key = account B. Use it with the deposit into
+  account A to check that each account keeps its own order.
+}
