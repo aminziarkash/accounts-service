@@ -2,7 +2,7 @@
 
 Banking accounts service built with Spring Boot 4, PostgreSQL and Testcontainers: ledger, safe money movement under
 concurrency, a validated REST API, idempotent money operations, JWT security with Keycloak and reliable events through a
-transactional outbox to Kafka. Caching and an events consumer service are planned.
+transactional outbox to Kafka, consumed by a second service, `notifications-service`. Caching is planned.
 
 ![CI](https://github.com/aminziarkash/accounts-service/actions/workflows/ci.yml/badge.svg)
 
@@ -34,11 +34,14 @@ Built:
   transaction as the money movement. A relay publishes the rows to Kafka (`accounts.events`), keyed by account id so
   one account's events stay in order. Delivery is at-least-once: a crash can send an event twice, so consumers must
   ignore duplicates by `event-id`.
+- **A second service.** `notifications-service` is its own Spring Boot app with its own database. It reads
+  `accounts.events` in a consumer group and turns events into notifications. It stores the event id and the
+  notification in one transaction (`insert ... on conflict do nothing`), so a redelivered or concurrent duplicate
+  changes nothing. A failing message is retried, then published to `accounts.events.DLT` with the error in its
+  headers; a message that can never succeed (no event id) goes there at once, so it cannot block its partition.
 
 Planned:
 
-- **Events consumer.** A second Spring Boot service, `notifications-service`, with an idempotent consumer and a
-  dead-letter topic.
 - **Caching.** Caffeine for profile reads, never for balances.
 
 ## Stack
@@ -96,6 +99,23 @@ docker exec -it accounts-kafka /opt/kafka/bin/kafka-console-consumer.sh --bootst
 Make a deposit with Bruno and the event shows up within a second. The `bruno/events` folder has requests for replays
 and transfers. Stop Kafka, make a deposit, start Kafka again: the API keeps working and the events go out afterwards,
 in order. The relay settings (`batch-size`, `send-timeout`, `poll-interval`) are under `app.outbox` in `application.yaml`.
+
+### notifications-service
+
+The consumer lives in `notifications-service/` with its own `pom.xml` and Maven wrapper. It needs its own database
+and the dead-letter topic once:
+
+```bash
+docker exec accounts-postgres psql -U accounts -d accounts -c "create database notifications;"
+docker exec accounts-kafka /opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 \
+  --create --topic accounts.events.DLT --partitions 3 --replication-factor 1
+
+cd notifications-service && ./mvnw spring-boot:run     # port 8090, group "notifications-service"
+./mvnw verify                                          # tests use Testcontainers (Kafka and PostgreSQL)
+```
+
+Check the group's progress with `kafka-consumer-groups.sh --describe --group notifications-service` and the results
+with `select * from notifications` in the `notifications` database.
 
 API docs: http://localhost:8080/swagger-ui.html (OpenAPI JSON at `/v3/api-docs`).
 
@@ -160,8 +180,8 @@ The layer rules are enforced by ArchUnit tests, so the build fails if a controll
 - [ ] Caching
 - [ ] Event-driven core
   - [x] Transactional outbox and Kafka relay
-  - [ ] `notifications-service` with an idempotent consumer
-  - [ ] Retries and a dead-letter topic
+  - [x] `notifications-service` with an idempotent consumer
+  - [x] Retries and a dead-letter topic
 - [ ] Failure handling, schema evolution, read model
 - [ ] Observability and delivery
 
@@ -173,6 +193,7 @@ The layer rules are enforced by ArchUnit tests, so the build fails if a controll
 - The relay polls the outbox, so an event can be delayed by up to the poll interval (0.5 seconds by default). Change
   data capture with Debezium would remove the polling, at the cost of running Kafka Connect.
 - Published outbox rows are not deleted yet.
+- Messages in the dead-letter topic are not replayed automatically; someone has to look at them.
 - Kafka advertises `localhost:9092`, so the service reaches it from the host but not from a container started with
   `docker run`. Run the app on the host while working with Kafka.
 
