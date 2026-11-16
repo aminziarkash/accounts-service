@@ -1,0 +1,62 @@
+groups:
+  - name: accounts-events
+    rules:
+      - alert: OutboxEventStuck
+        expr: outbox_oldest_pending_age_seconds > 60
+        for: 2m
+        labels:
+          severity: page
+        annotations:
+          summary: "An outbox event has been waiting for more than a minute"
+          description: "Events are saved but not reaching Kafka. Check the relay logs and the broker."
+
+      - alert: OutboxPublishFailing
+        expr: increase(outbox_publish_failures_total[5m]) > 0
+        for: 1m
+        labels:
+          severity: warn
+        annotations:
+          summary: "The outbox relay is failing to publish to Kafka"
+
+      - alert: ConsumerLagHigh
+        expr: max by (consumergroup, topic) (kafka_consumergroup_lag) > 100
+        for: 5m
+        labels:
+          severity: page
+        annotations:
+          summary: "Consumer group {{ $labels.consumergroup }} is more than 100 messages behind on {{ $labels.topic }}"
+
+      - alert: ConsumerGroupHasNoMembers
+        expr: kafka_consumergroup_members{consumergroup="notifications-service"} == 0
+        for: 2m
+        labels:
+          severity: page
+        annotations:
+          summary: "No notifications-service instance is consuming"
+
+      - alert: DeadLetterTopicNotEmpty
+        expr: (sum(kafka_topic_partition_current_offset{topic="accounts.events.DLT"}) - sum(kafka_topic_partition_oldest_offset{topic="accounts.events.DLT"})) > 0
+        for: 1m
+        labels:
+          severity: warn
+        annotations:
+          summary: "There are messages in the dead-letter topic"
+          description: "A message could not be processed. Look at its headers for the error."
+
+      - alert: ServiceDown
+        expr: up == 0
+        for: 1m
+        labels:
+          severity: page
+        annotations:
+          summary: "{{ $labels.job }} cannot be scraped"
+
+      - alert: HighServerErrorRate
+        expr: >
+          sum(rate(http_server_requests_seconds_count{application="accounts-service",status=~"5.."}[5m]))
+          / sum(rate(http_server_requests_seconds_count{application="accounts-service"}[5m])) > 0.05
+        for: 5m
+        labels:
+          severity: page
+        annotations:
+          summary: "More than 5% of accounts-service requests fail with a 5xx"
