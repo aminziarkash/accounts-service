@@ -39,6 +39,10 @@ Built:
   notification in one transaction (`insert ... on conflict do nothing`), so a redelivered or concurrent duplicate
   changes nothing. A failing message is retried, then published to `accounts.events.DLT` with the error in its
   headers; a message that can never succeed (no event id) goes there at once, so it cannot block its partition.
+- **Observability.** Both services expose Micrometer metrics at `/actuator/prometheus`. Prometheus scrapes them, Grafana
+  shows a provisioned dashboard, and a Kafka exporter provides consumer lag. Custom metrics cover the outbox backlog and
+  the age of the oldest unpublished event, publish failures, processed and duplicate events, and dead-lettered messages.
+  Seven alert rules watch the pipeline. See ADR-005.
 
 Planned:
 
@@ -57,12 +61,13 @@ Planned:
 | Schema migrations    | Liquibase (formatted SQL)                                                                         |
 | Mapping              | MapStruct (compile-time, no reflection)                                                           |
 | Concurrency          | Pessimistic locking with ordered locks for balances, optimistic locking (`@Version`) for profiles |
-| Testing              | JUnit 5, AssertJ, Mockito, MockMvc, Testcontainers (real PostgreSQL, no H2), ArchUnit                |
+| Testing              | JUnit 5, AssertJ, Mockito, MockMvc, Testcontainers (real PostgreSQL, no H2), ArchUnit             |
 | Build and quality    | Maven wrapper, Spotless (google-java-format), GitHub Actions CI                                   |
 | Messaging            | Transactional outbox, Kafka (KRaft, single broker locally), Spring for Apache Kafka               |
+| Observability        | Micrometer, Prometheus, Grafana, Kafka exporter, alert rules in `monitoring/`                     |
 | Local tooling        | Docker Compose, Keycloak, Dockerfile, Bruno collection in `bruno/`                                |
 
-**Planned:** Caffeine caching, an idempotent Kafka consumer, Resilience4j, Micrometer and Prometheus.
+**Planned:** Caffeine caching, Resilience4j, distributed tracing.
 
 ## Run it
 
@@ -117,6 +122,21 @@ cd notifications-service && ./mvnw spring-boot:run     # port 8090, group "notif
 Check the group's progress with `kafka-consumer-groups.sh --describe --group notifications-service` and the results
 with `select * from notifications` in the `notifications` database.
 
+### Observability
+
+`docker compose up -d` also starts Prometheus, Grafana and a Kafka exporter. Run both apps on the host, then open:
+
+| What       | URL                                     | Notes                                                                   |
+|------------|-----------------------------------------|-------------------------------------------------------------------------|
+| Prometheus | http://localhost:9090                   | Status > Targets, and Alerts for the rule states                        |
+| Grafana    | http://localhost:3030                   | Local only: `admin` / `admin`. Dashboard "Accounts events and services" |
+| Metrics    | `/actuator/prometheus` on 8080 and 8090 | The raw numbers Prometheus scrapes                                      |
+
+Try it: stop Kafka (`docker stop accounts-kafka`), make a few deposits with Bruno, and watch the pending events and the
+age of the oldest event rise and the `OutboxEventStuck` alert fire. Start Kafka again and both return to zero.
+`OutboxPublishFailing` looks at the last 5 minutes, so it stays red a few minutes after recovery. The dashboard and
+rules live in `monitoring/`; see [ADR-005](docs/adr/005-observability.md) for what is monitored and why.
+
 API docs: http://localhost:8080/swagger-ui.html (OpenAPI JSON at `/v3/api-docs`).
 
 Health probes for containers and Kubernetes: `/actuator/health/liveness` (is the process alive) and
@@ -158,9 +178,40 @@ transaction as the ledger entries, so an event exists exactly when the money mov
 rows with `SELECT ... FOR UPDATE SKIP LOCKED` (so several instances never publish the same row), sends them to Kafka in
 order, waits for the broker to confirm and marks them published. If Kafka is down the API keeps working and the events
 wait in the table. Event ids travel as a Kafka header so consumers can ignore duplicates.
+`notifications-service` reads the topic in a consumer group and commits offsets after processing, so a crash causes a
+redelivery, never a loss. Its handler records the event id in `processed_events` (`insert ... on conflict do nothing`) and
+saves the notification in the same transaction, so a duplicate changes nothing. It reads only the fields it needs and
+ignores the rest (a tolerant reader), so the JSON is the contract and the services share no classes. A failing message
+is retried three times, one second apart, then published to `accounts.events.DLT`; input that can never succeed goes
+there at once.
 The layer rules are enforced by ArchUnit tests, so the build fails if a controller touches an entity or a repository.
 
-[Add the diagram here once built: a Mermaid diagram of accounts-service, PostgreSQL, outbox relay, Kafka, notifications-service.]
+```mermaid
+flowchart LR
+    client[Client] -->|JWT| api[accounts-service API]
+    kc[Keycloak] -. signs tokens .-> client
+    api -->|one transaction| pg[(accounts DB: ledger + outbox_events)]
+    relay[Outbox relay] -->|SKIP LOCKED batch| pg
+    relay -->|key = account id, acks=all| kafka{{Kafka: accounts.events}}
+    kafka --> notif[notifications-service]
+    notif -->|processed_events + notifications| npg[(notifications DB)]
+    notif -. retries exhausted .-> dlt{{accounts.events.DLT}}
+    prom[Prometheus] -. scrapes .-> api
+    prom -. scrapes .-> notif
+    exporter[Kafka exporter] -->|consumer lag| prom
+    graf[Grafana] --> prom
+```
+
+### Event contract
+
+| Event type           | Written by | Key               | Headers                  |
+|----------------------|------------|-------------------|--------------------------|
+| `MONEY_DEPOSITED`    | deposit    | account id        | `event-id`, `event-type` |
+| `MONEY_WITHDRAWN`    | withdrawal | account id        | `event-id`, `event-type` |
+| `TRANSFER_COMPLETED` | transfer   | source account id | `event-id`, `event-type` |
+
+The type strings are a contract: add new types and new fields freely, never rename or remove. Consumers ignore what
+they do not know. A replayed idempotent request writes no second event.
 
 ## Decisions
 
@@ -170,6 +221,7 @@ The layer rules are enforced by ArchUnit tests, so the build fails if a controll
 | 002                                     | Caching policy: what is cached and what never is          | Planned  |
 | 003                                     | Event model and messaging style                           | Planned  |
 | 004                                     | Resilience4j versus Spring Framework 7 core retry         | Planned  |
+| [005](docs/adr/005-observability.md)    | Observability: what we monitor, alert on and why          | Accepted |
 
 ## Roadmap
 
@@ -178,12 +230,13 @@ The layer rules are enforced by ArchUnit tests, so the build fails if a controll
 - [x] REST API (validation, error handling, idempotent deposits, withdrawals and transfers, OpenAPI)
 - [x] Security (Keycloak, JWT resource server, roles, ownership, per-caller idempotency keys)
 - [ ] Caching
-- [ ] Event-driven core
+- [x] Event-driven core
   - [x] Transactional outbox and Kafka relay
   - [x] `notifications-service` with an idempotent consumer
   - [x] Retries and a dead-letter topic
 - [ ] Failure handling, schema evolution, read model
-- [ ] Observability and delivery
+- [x] Observability: metrics, Prometheus, Grafana, Kafka lag, alert rules
+- [ ] Delivery: tracing, Kubernetes manifests
 
 ## Known limits
 
@@ -193,9 +246,14 @@ The layer rules are enforced by ArchUnit tests, so the build fails if a controll
 - The relay polls the outbox, so an event can be delayed by up to the poll interval (0.5 seconds by default). Change
   data capture with Debezium would remove the polling, at the cost of running Kafka Connect.
 - Published outbox rows are not deleted yet.
+- There is no Alertmanager locally, so alerts only show in the Prometheus UI. `/actuator/prometheus` is public in the
+  API; in production it must be reachable only inside the network or on a management port.
 - Messages in the dead-letter topic are not replayed automatically; someone has to look at them.
-- Kafka advertises `localhost:9092`, so the service reaches it from the host but not from a container started with
-  `docker run`. Run the app on the host while working with Kafka.
+- Kafka has two listeners: `localhost:9092` for apps on the host and `kafka:19092` for containers on the Compose
+  network. A container started with plain `docker run` outside that network cannot reach the broker.
+- Kafka has no volume locally, so recreating its container loses the topics; create them again (see Events).
+- Events are plain JSON with no schema registry, so compatibility rests on the add-only rule. Retries block the
+  partition while they wait, which keeps order but delays the messages behind.
 
 ## Out of scope
 
