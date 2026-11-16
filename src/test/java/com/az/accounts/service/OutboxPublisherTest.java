@@ -8,6 +8,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.az.accounts.TestcontainersConfiguration;
+import io.micrometer.core.instrument.MeterRegistry;
 import java.math.BigDecimal;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -32,6 +33,7 @@ class OutboxPublisherTest {
     @Autowired CustomerService customerService;
     @Autowired AccountService accountService;
     @Autowired JdbcTemplate jdbc;
+    @Autowired MeterRegistry meterRegistry;
 
     @BeforeEach
     void clean() {
@@ -53,17 +55,24 @@ class OutboxPublisherTest {
                 "select count(*) from outbox_events where published_at is not null", Integer.class);
     }
 
+    // counters keep their value across tests in the same context, so tests compare differences
+    private double count(String name) {
+        return meterRegistry.counter(name).count();
+    }
+
     @Test
     @SuppressWarnings("unchecked")
     void publishesInOrderWithKeyAndHeadersAndMarksPublished() {
         when(kafkaTemplate.send(any(ProducerRecord.class)))
                 .thenReturn(CompletableFuture.completedFuture(null));
         Long accountId = accountWithDeposits("10.00", "20.00");
+        double publishedBefore = count("outbox.events.published");
 
         int published = publisher.publishBatch();
 
         assertThat(published).isEqualTo(2);
         assertThat(publishedCount()).isEqualTo(2);
+        assertThat(count("outbox.events.published") - publishedBefore).isEqualTo(2.0);
         ArgumentCaptor<ProducerRecord<String, String>> captor =
                 ArgumentCaptor.forClass(ProducerRecord.class);
         verify(kafkaTemplate, times(2)).send(captor.capture());
@@ -84,17 +93,25 @@ class OutboxPublisherTest {
                 .thenReturn(CompletableFuture.completedFuture(null))
                 .thenReturn(CompletableFuture.failedFuture(new RuntimeException("broker down")));
         accountWithDeposits("10.00", "20.00", "30.00");
+        double publishedBefore = count("outbox.events.published");
+        double failuresBefore = count("outbox.publish.failures");
 
         int published = publisher.publishBatch();
 
         assertThat(published).isEqualTo(1);
         assertThat(publishedCount()).isEqualTo(1);
+        assertThat(count("outbox.events.published") - publishedBefore).isEqualTo(1.0);
+        assertThat(count("outbox.publish.failures") - failuresBefore).isEqualTo(1.0);
         verify(kafkaTemplate, times(2)).send(any(ProducerRecord.class));
     }
 
     @Test
     void nothingToPublishDoesNotCallKafka() {
+        double failuresBefore = count("outbox.publish.failures");
+
         assertThat(publisher.publishBatch()).isZero();
+
+        assertThat(count("outbox.publish.failures") - failuresBefore).isZero();
         verifyNoInteractions(kafkaTemplate);
     }
 }

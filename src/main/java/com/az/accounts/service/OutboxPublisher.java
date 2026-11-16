@@ -3,6 +3,8 @@ package com.az.accounts.service;
 import com.az.accounts.config.OutboxProperties;
 import com.az.accounts.domain.OutboxEvent;
 import com.az.accounts.repository.OutboxEventRepository;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
@@ -23,14 +25,19 @@ public class OutboxPublisher {
     private final OutboxEventRepository repository;
     private final KafkaTemplate<String, String> kafkaTemplate;
     private final OutboxProperties properties;
+    private final Counter publishedCounter;
+    private final Counter failureCounter;
 
     public OutboxPublisher(
             OutboxEventRepository repository,
             KafkaTemplate<String, String> kafkaTemplate,
-            OutboxProperties properties) {
+            OutboxProperties properties,
+            MeterRegistry meterRegistry) {
         this.repository = repository;
         this.kafkaTemplate = kafkaTemplate;
         this.properties = properties;
+        this.publishedCounter = meterRegistry.counter("outbox.events.published");
+        this.failureCounter = meterRegistry.counter("outbox.publish.failures");
     }
 
     /** Sends one batch in order. Returns how many were published. Stops at the first failure. */
@@ -48,11 +55,13 @@ public class OutboxPublisher {
                 break;
             } catch (ExecutionException | TimeoutException | RuntimeException e) {
                 log.warn("Could not publish outbox event {}, will retry", event.getEventId(), e);
+                failureCounter.increment();
                 break;
             }
             event.markPublished();
             published++;
         }
+        publishedCounter.increment(published);
         return published;
     }
 
