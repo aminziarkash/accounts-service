@@ -1,6 +1,8 @@
 package com.az.notifications;
 
+import io.micrometer.core.instrument.MeterRegistry;
 import org.apache.kafka.common.TopicPartition;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -13,7 +15,7 @@ import org.springframework.util.backoff.FixedBackOff;
 public class KafkaErrorHandlingConfig {
 
     @Bean
-    DefaultErrorHandler kafkaErrorHandler(KafkaTemplate<Object, Object> template) {
+    DefaultErrorHandler kafkaErrorHandler(KafkaTemplate<Object, Object> template, MeterRegistry registry) {
         // partition -1: let the producer pick by key, so the DLT does not need the same partition count
         DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(
                 template, (record, exception) -> new TopicPartition(record.topic() + ".DLT", -1));
@@ -28,15 +30,17 @@ public class KafkaErrorHandlingConfig {
             @Override
             public void failedDelivery(
                     org.apache.kafka.clients.consumer.ConsumerRecord<?, ?> record, Exception ex, int deliveryAttempt) {
-                org.slf4j.LoggerFactory.getLogger("dead-letter")
+                LoggerFactory.getLogger("dead-letter")
                         .warn("Delivery attempt {} failed for partition={} offset={}: {}",
                                 deliveryAttempt, record.partition(), record.offset(), ex.toString());
             }
 
             @Override
             public void recovered(org.apache.kafka.clients.consumer.ConsumerRecord<?, ?> record, Exception ex) {
-                org.slf4j.LoggerFactory.getLogger("dead-letter")
+                LoggerFactory.getLogger("dead-letter")
                         .warn("Dead-lettered record partition={} offset={}: {}", record.partition(), record.offset(), ex.toString());
+                registry.counter("notifications.events.dead.lettered", "reason", ex.getCause() != null
+                        ? ex.getCause().getClass().getSimpleName() : ex.getClass().getSimpleName()).increment();
             }
         });
 

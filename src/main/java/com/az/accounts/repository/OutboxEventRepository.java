@@ -1,6 +1,7 @@
 package com.az.accounts.repository;
 
 import com.az.accounts.domain.OutboxEvent;
+import java.time.Instant;
 import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -14,4 +15,9 @@ public interface OutboxEventRepository extends JpaRepository<OutboxEvent, Long> 
                             + " order by id limit :batchSize for update skip locked",
             nativeQuery = true)
     List<OutboxEvent> lockUnpublishedBatch(@Param("batchSize") int batchSize);
+
+    long countByPublishedAtIsNull();
+
+    @Query("select min(e.createdAt) from OutboxEvent e where e.publishedAt is null")
+    Instant findOldestPendingCreatedAt();
 }

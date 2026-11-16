@@ -1,6 +1,8 @@
 package com.az.notifications;
 
 import java.util.UUID;
+
+import io.micrometer.core.instrument.MeterRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -15,14 +17,17 @@ public class NotificationService {
     private final ProcessedEvents processedEvents;
     private final NotificationRepository notifications;
     private final JsonMapper jsonMapper;
+    private final MeterRegistry registry;
 
     public NotificationService(
             ProcessedEvents processedEvents,
             NotificationRepository notifications,
-            JsonMapper jsonMapper) {
+            JsonMapper jsonMapper,
+            MeterRegistry registry) {
         this.processedEvents = processedEvents;
         this.notifications = notifications;
         this.jsonMapper = jsonMapper;
+        this.registry = registry;
     }
 
     @Transactional
@@ -32,6 +37,10 @@ public class NotificationService {
             return;
         }
         EventPayload event = jsonMapper.readValue(payload, EventPayload.class);
+
+        registry.counter("notifications.events.duplicates").increment();
+        registry.counter("notifications.events.skipped").increment();
+
         switch (eventType) {
             case "MONEY_DEPOSITED" -> save(eventId, eventType, event.accountId(),
                     "Deposit of %s %s into account %s. New balance: %s"
@@ -48,5 +57,6 @@ public class NotificationService {
 
     private void save(UUID eventId, String eventType, Long accountId, String message) {
         notifications.save(new Notification(eventId, accountId, eventType, message));
+        registry.counter("notifications.events.processed", "type", eventType).increment();
     }
 }
