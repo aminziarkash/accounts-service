@@ -25,7 +25,10 @@ server:
   port: 8090
 
 management:
+  metrics:
+    tags:
+      application: ${spring.application.name}
   endpoints:
     web:
       exposure:
-        include: health
+        include: health,prometheus
