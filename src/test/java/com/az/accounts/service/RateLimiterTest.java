@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.az.accounts.config.RateLimitProperties;
 import com.az.accounts.exception.RateLimitExceededException;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -17,7 +18,8 @@ class RateLimiterTest {
     private final Clock clock = Clock.fixed(Instant.parse("2026-01-01T00:00:00Z"), ZoneOffset.UTC);
 
     private RateLimiter limiterWithCapacity(int capacity) {
-        return new RateLimiter(new RateLimitProperties(true, capacity, 1.0), clock);
+        SimpleMeterRegistry registry = new SimpleMeterRegistry();
+        return new RateLimiter(new RateLimitProperties(true, capacity, 1.0), clock, registry);
     }
 
     @Test
@@ -45,7 +47,9 @@ class RateLimiterTest {
 
     @Test
     void doesNothingWhenSwitchedOff() {
-        RateLimiter limiter = new RateLimiter(new RateLimitProperties(false, 1, 1.0), clock);
+        SimpleMeterRegistry registry = new SimpleMeterRegistry();
+        RateLimiter limiter =
+                new RateLimiter(new RateLimitProperties(false, 1, 1.0), clock, registry);
 
         assertThatCode(
                         () -> {
@@ -54,5 +58,18 @@ class RateLimiterTest {
                             }
                         })
                 .doesNotThrowAnyException();
+    }
+
+    @Test
+    void countsEveryRejection() {
+        SimpleMeterRegistry registry = new SimpleMeterRegistry();
+        RateLimiter limiter =
+                new RateLimiter(new RateLimitProperties(true, 1, 1.0), clock, registry);
+        limiter.check("alice");
+
+        assertThatThrownBy(() -> limiter.check("alice"));
+        assertThatThrownBy(() -> limiter.check("alice"));
+
+        assertThat(registry.counter("ratelimit.rejected").count()).isEqualTo(2.0);
     }
 }
