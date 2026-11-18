@@ -21,6 +21,7 @@ import com.az.accounts.service.CurrentUser;
 import com.az.accounts.service.CustomerService;
 import com.az.accounts.service.IdempotentAccountService;
 import com.az.accounts.service.IdempotentTransferService;
+import com.az.accounts.service.RateLimiter;
 import java.math.BigDecimal;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -43,6 +44,7 @@ class ApiErrorHandlingTest {
     @MockitoBean private IdempotentAccountService idempotentAccountService;
     @MockitoBean private CustomerService customerService;
     @MockitoBean private AccountService accountService;
+    @MockitoBean private RateLimiter rateLimiter;
 
     @Test
     void invalidCustomerReturns400WithFieldErrors() throws Exception {

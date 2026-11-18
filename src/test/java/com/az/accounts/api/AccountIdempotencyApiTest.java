@@ -17,6 +17,7 @@ import com.az.accounts.service.CurrentUser;
 import com.az.accounts.service.CustomerService;
 import com.az.accounts.service.IdempotentAccountService;
 import com.az.accounts.service.IdempotentTransferService;
+import com.az.accounts.service.RateLimiter;
 import com.az.accounts.service.view.LedgerEntryView;
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -41,6 +42,7 @@ class AccountIdempotencyApiTest {
     @MockitoBean private AccountService accountService;
     @MockitoBean private IdempotentTransferService transferService;
     @MockitoBean private IdempotentAccountService idempotentAccountService;
+    @MockitoBean private RateLimiter rateLimiter;
 
     private static LedgerEntryView entry(LedgerEntryType type) {
         return new LedgerEntryView(

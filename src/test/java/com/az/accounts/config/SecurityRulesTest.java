@@ -12,6 +12,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.az.accounts.api.CustomerController;
 import com.az.accounts.service.AccessPolicy;
 import com.az.accounts.service.CustomerService;
+import com.az.accounts.service.RateLimiter;
 import com.az.accounts.service.view.CustomerView;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -30,6 +31,7 @@ class SecurityRulesTest {
 
     @MockitoBean private AccessPolicy accessPolicy;
     @MockitoBean private CustomerService customerService;
+    @MockitoBean private RateLimiter rateLimiter;
 
     @Test
     void requestWithoutTokenGets401AsProblemJson() throws Exception {

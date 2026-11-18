@@ -16,6 +16,7 @@ import com.az.accounts.service.AccountService;
 import com.az.accounts.service.CustomerService;
 import com.az.accounts.service.IdempotentAccountService;
 import com.az.accounts.service.IdempotentTransferService;
+import com.az.accounts.service.RateLimiter;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -39,6 +40,7 @@ class LedgerPagingApiTest {
     @MockitoBean private IdempotentAccountService idempotentAccountService;
     @MockitoBean private CustomerService customerService;
     @MockitoBean private AccountService accountService;
+    @MockitoBean private RateLimiter rateLimiter;
 
     private void stubEmptyPage() {
         when(accountService.getLedger(eq(1L), any(Pageable.class)))

@@ -6,6 +6,7 @@ import com.az.accounts.exception.DuplicateEmailException;
 import com.az.accounts.exception.IdempotencyKeyReuseException;
 import com.az.accounts.exception.InsufficientFundsException;
 import com.az.accounts.exception.InvalidOperationException;
+import com.az.accounts.exception.RateLimitExceededException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -165,6 +166,18 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                                 HttpStatus.SERVICE_UNAVAILABLE,
                                 "Temporarily busy",
                                 "The account is busy. Try again shortly."));
+    }
+
+    // 429: the caller used up their tokens. Nothing was changed, so retrying later is safe.
+    @ExceptionHandler(RateLimitExceededException.class)
+    public ResponseEntity<ProblemDetail> handleRateLimit(RateLimitExceededException ex) {
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .header(HttpHeaders.RETRY_AFTER, String.valueOf(ex.getRetryAfterSeconds()))
+                .body(
+                        problem(
+                                HttpStatus.TOO_MANY_REQUESTS,
+                                "Too many requests",
+                                "Slow down and try again shortly."));
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)
