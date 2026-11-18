@@ -7,6 +7,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.az.accounts.api.CustomerController;
 import com.az.accounts.service.AccessPolicy;
 import com.az.accounts.service.CustomerService;
+import com.az.accounts.service.RateLimiter;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -24,6 +25,7 @@ class CorsConfigTest {
 
     @MockitoBean private AccessPolicy accessPolicy;
     @MockitoBean private CustomerService customerService;
+    @MockitoBean private RateLimiter rateLimiter;
 
     @Test
     void allowsAConfiguredOrigin() throws Exception {

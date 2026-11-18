@@ -38,6 +38,10 @@ app:
   idempotency:
     retention: PT24H
     cleanup-interval: PT1H
+  rate-limit:
+    enabled: true
+    capacity: 10
+    refill-per-second: 0.5
 
 server:
   shutdown: graceful

@@ -20,6 +20,7 @@ import com.az.accounts.service.CurrentUser;
 import com.az.accounts.service.CustomerService;
 import com.az.accounts.service.IdempotentAccountService;
 import com.az.accounts.service.IdempotentTransferService;
+import com.az.accounts.service.RateLimiter;
 import com.az.accounts.service.view.CustomerView;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -44,6 +45,7 @@ class AccessControlApiTest {
     @MockitoBean private AccountService accountService;
     @MockitoBean private IdempotentTransferService transferService;
     @MockitoBean private IdempotentAccountService idempotentAccountService;
+    @MockitoBean private RateLimiter rateLimiter;
 
     @Test
     void newCustomersAreOwnedByTheCallerFromTheToken() throws Exception {
