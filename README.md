@@ -25,6 +25,10 @@ Built:
   transfer, so a repeated request returns the first result and money moves once, even for concurrent duplicates. Keys expire
   after 24 hours and a scheduled job deletes them. A key belongs to its caller, so users can send the same header
   value without interfering, and nobody can replay someone else's key.
+- **Rate limiting.** Each caller (the `sub` claim of the token) gets a token bucket for write requests: a burst
+  of 10 that refills at 0.5 requests per second by default, set under `app.rate-limit`. When the bucket is empty the
+  API answers `429` with a `Retry-After` header, in the same problem+json format as every other error. Reads are not
+  limited. Rejections are counted in `ratelimit_rejected_total`.
 - **Cross-cutting basics.** A correlation id filter, request timing interceptor, configurable CORS and an `@Audited`
   aspect for money operations.
 - **Documented API.** OpenAPI docs and Swagger UI generated with springdoc.
@@ -242,6 +246,8 @@ they do not know. A replayed idempotent request writes no second event.
 
 - A key is forgotten after 24 hours; a retry after that counts as a new request.
 - A busy account answers `503` with `Retry-After` after waiting 3 seconds for its row lock.
+- Rate limiting is per instance and in memory. With several instances the limit multiplies, and idle buckets are
+  never removed. In production it belongs at the gateway, or in a shared store such as Redis.
 - Events are delivered at least once and in order per account, not exactly once. Consumers must ignore duplicates.
 - The relay polls the outbox, so an event can be delayed by up to the poll interval (0.5 seconds by default). Change
   data capture with Debezium would remove the polling, at the cost of running Kafka Connect.
