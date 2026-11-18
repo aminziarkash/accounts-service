@@ -2,6 +2,8 @@ package com.az.accounts.service;
 
 import com.az.accounts.config.RateLimitProperties;
 import com.az.accounts.exception.RateLimitExceededException;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
 import java.time.Clock;
 import java.util.concurrent.ConcurrentHashMap;
 import org.springframework.stereotype.Component;
@@ -16,10 +18,16 @@ public class RateLimiter {
     private final RateLimitProperties properties;
     private final Clock clock;
     private final ConcurrentHashMap<String, TokenBucket> buckets = new ConcurrentHashMap<>();
+    private final Counter rejected;
 
-    public RateLimiter(RateLimitProperties properties, Clock clock) {
+    public RateLimiter(RateLimitProperties properties, Clock clock, MeterRegistry registry) {
         this.properties = properties;
         this.clock = clock;
+        this.rejected =
+                Counter.builder("ratelimit.rejected")
+                        .description(
+                                "Write requests refused with 429 because the caller's bucket was empty")
+                        .register(registry);
     }
 
     /**
@@ -40,6 +48,7 @@ public class RateLimiter {
                                         properties.refillPerSecond(),
                                         clock));
         if (!bucket.tryConsume()) {
+            rejected.increment();
             throw new RateLimitExceededException(bucket.secondsUntilNextToken());
         }
     }

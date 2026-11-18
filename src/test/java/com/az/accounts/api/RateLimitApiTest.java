@@ -1,5 +1,6 @@
 package com.az.accounts.api;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -19,12 +20,16 @@ import com.az.accounts.service.CustomerService;
 import com.az.accounts.service.IdempotentAccountService;
 import com.az.accounts.service.IdempotentTransferService;
 import com.az.accounts.service.RateLimiter;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.math.BigDecimal;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -54,6 +59,7 @@ class RateLimitApiTest {
     @MockitoBean private AccountService accountService;
     @MockitoBean private IdempotentTransferService transferService;
     @MockitoBean private IdempotentAccountService idempotentAccountService;
+    @Autowired private MeterRegistry meterRegistry;
 
     @BeforeEach
     void stubTransfer() {
@@ -64,6 +70,14 @@ class RateLimitApiTest {
                         anyLong(),
                         any(BigDecimal.class)))
                 .thenReturn(UUID.randomUUID());
+    }
+
+    @TestConfiguration
+    static class Metrics {
+        @Bean
+        MeterRegistry meterRegistry() {
+            return new SimpleMeterRegistry();
+        }
     }
 
     private ResultActions transferAs(String subject) throws Exception {
@@ -78,6 +92,7 @@ class RateLimitApiTest {
     @Test
     void thirdWriteInARowGets429WithRetryAfter() throws Exception {
         String alice = "alice-" + UUID.randomUUID();
+        double before = meterRegistry.counter("ratelimit.rejected").count();
 
         transferAs(alice).andExpect(status().isCreated());
         transferAs(alice).andExpect(status().isCreated());
@@ -86,6 +101,7 @@ class RateLimitApiTest {
                 .andExpect(status().isTooManyRequests())
                 .andExpect(header().exists("Retry-After"))
                 .andExpect(jsonPath("$.title").value("Too many requests"));
+        assertThat(meterRegistry.counter("ratelimit.rejected").count()).isEqualTo(before + 1);
     }
 
     @Test
