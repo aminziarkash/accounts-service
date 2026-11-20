@@ -8,6 +8,7 @@ import com.az.accounts.repository.CustomerRepository;
 import com.az.accounts.service.view.CustomerProfile;
 import com.az.accounts.service.view.CustomerView;
 import com.az.accounts.service.view.ViewMapper;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -48,5 +49,16 @@ public class CustomerService {
                 customerRepository
                         .findById(id)
                         .orElseThrow(() -> new CustomerNotFoundException(id)));
+    }
+
+    @CacheEvict(cacheNames = CacheConfig.PROFILES, key = "#id")
+    @Transactional
+    public CustomerProfile updateName(Long id, String firstName, String lastName) {
+        Customer customer =
+                customerRepository
+                        .findById(id)
+                        .orElseThrow(() -> new CustomerNotFoundException(id));
+        customer.changeName(firstName, lastName);
+        return mapper.toProfile(customer);
     }
 }
