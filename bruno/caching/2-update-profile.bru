@@ -1,0 +1,22 @@
+meta {
+  name: Update profile (evicts the cache)
+  type: http
+  seq: 2
+}
+
+put {
+  url: {{baseUrl}}/api/v1/customers/{{customerId}}/profile
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "firstName": "Amin",
+    "lastName": "Updated"
+  }
+}
+
+vars:pre-request {
+  customerId: 4
+}

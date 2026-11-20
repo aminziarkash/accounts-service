@@ -1,0 +1,21 @@
+meta {
+  name: Deposit (click Send 11+ times fast)
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/v1/accounts/{{accountA}}/deposits
+  body: json
+  auth: inherit
+}
+
+headers {
+  Idempotency-Key: {{$guid}}
+}
+
+body:json {
+  {
+    "amount": "1.00"
+  }
+}
