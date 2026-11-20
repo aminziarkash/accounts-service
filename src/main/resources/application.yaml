@@ -42,6 +42,9 @@ app:
     enabled: true
     capacity: 10
     refill-per-second: 0.5
+  cache:
+    profile-max-size: 1000
+    profile-ttl: PT5M
 
 server:
   shutdown: graceful
