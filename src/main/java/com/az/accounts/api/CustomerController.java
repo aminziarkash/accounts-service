@@ -1,6 +1,7 @@
 package com.az.accounts.api;
 
 import com.az.accounts.api.dto.CreateCustomerRequest;
+import com.az.accounts.api.dto.UpdateProfileRequest;
 import com.az.accounts.service.AccessPolicy;
 import com.az.accounts.service.CurrentUser;
 import com.az.accounts.service.CustomerService;
@@ -16,6 +17,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -78,5 +80,20 @@ public class CustomerController {
     public CustomerProfile profile(@PathVariable Long id, Authentication authentication) {
         accessPolicy.requireCustomer(CurrentUser.from(authentication), id);
         return customerService.getProfile(id);
+    }
+
+    @Operation(summary = "Change a customer's first and last name")
+    @ApiResponse(responseCode = "200", description = "The updated profile")
+    @ApiResponse(responseCode = "400", description = "Invalid fields")
+    @ApiResponse(
+            responseCode = "404",
+            description = "Customer not found, or it belongs to someone else")
+    @PutMapping("/{id}/profile")
+    public CustomerProfile updateProfile(
+            @PathVariable Long id,
+            @Valid @RequestBody UpdateProfileRequest request,
+            Authentication authentication) {
+        accessPolicy.requireCustomer(CurrentUser.from(authentication), id);
+        return customerService.updateName(id, request.firstName(), request.lastName());
     }
 }
