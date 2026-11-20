@@ -15,4 +15,6 @@ public interface ViewMapper {
     LedgerEntryView toView(LedgerEntry entry);
 
     CustomerView toView(Customer customer);
+
+    CustomerProfile toProfile(Customer customer);
 }
