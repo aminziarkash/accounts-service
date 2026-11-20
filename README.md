@@ -47,10 +47,10 @@ Built:
   shows a provisioned dashboard, and a Kafka exporter provides consumer lag. Custom metrics cover the outbox backlog and
   the age of the oldest unpublished event, publish failures, processed and duplicate events, and dead-lettered messages.
   Seven alert rules watch the pipeline. See ADR-005.
-
-Planned:
-
-- **Caching.** Caffeine for profile reads, never for balances.
+- **Caching.** Profile reads (`GET /customers/{id}/profile`: name and email only) are cached with Caffeine, up to 1000
+  entries for 5 minutes by default, set under `app.cache`. Balances and accounts are never cached, and the ownership
+  check runs before the cache on every request. Changing a name evicts the entry. Hits and misses show up as
+  `cache_gets_total`. See ADR-002.
 
 ## Stack
 
@@ -222,7 +222,7 @@ they do not know. A replayed idempotent request writes no second event.
 | ADR                                     | Decision                                                  | Status   |
 |-----------------------------------------|-----------------------------------------------------------|----------|
 | [001](docs/adr/001-locking-strategy.md) | Pessimistic locking for balances, optimistic for profiles | Accepted |
-| 002                                     | Caching policy: what is cached and what never is          | Planned  |
+| [002](docs/adr/002-caching-policy.md)   | Caching policy: what is cached and what never is          | Accepted |
 | 003                                     | Event model and messaging style                           | Planned  |
 | 004                                     | Resilience4j versus Spring Framework 7 core retry         | Planned  |
 | [005](docs/adr/005-observability.md)    | Observability: what we monitor, alert on and why          | Accepted |
@@ -233,7 +233,7 @@ they do not know. A replayed idempotent request writes no second event.
 - [x] Persistence and transactions
 - [x] REST API (validation, error handling, idempotent deposits, withdrawals and transfers, OpenAPI)
 - [x] Security (Keycloak, JWT resource server, roles, ownership, per-caller idempotency keys)
-- [ ] Caching
+- [x] Caching
 - [x] Event-driven core
   - [x] Transactional outbox and Kafka relay
   - [x] `notifications-service` with an idempotent consumer
@@ -246,6 +246,8 @@ they do not know. A replayed idempotent request writes no second event.
 
 - A key is forgotten after 24 hours; a retry after that counts as a new request.
 - A busy account answers `503` with `Retry-After` after waiting 3 seconds for its row lock.
+- The profile cache lives in each instance's memory. After a name change, other instances can show the old name until
+  the entry expires (5 minutes by default). A shared cache such as Redis would remove this.
 - Rate limiting is per instance and in memory. With several instances the limit multiplies, and idle buckets are
   never removed. In production it belongs at the gateway, or in a shared store such as Redis.
 - Events are delivered at least once and in order per account, not exactly once. Consumers must ignore duplicates.
