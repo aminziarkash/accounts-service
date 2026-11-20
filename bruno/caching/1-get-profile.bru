@@ -1,0 +1,15 @@
+meta {
+  name: Get profile (cached)
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/v1/customers/{{customerId}}/profile
+  body: none
+  auth: inherit
+}
+
+vars:pre-request {
+  customerId: 4
+}

@@ -1,0 +1,15 @@
+meta {
+  name: Get profile after update
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/v1/customers/{{customerId}}/profile
+  body: none
+  auth: inherit
+}
+
+vars:pre-request {
+  customerId: 4
+}
