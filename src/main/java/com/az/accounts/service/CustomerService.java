@@ -1,11 +1,14 @@
 package com.az.accounts.service;
 
+import com.az.accounts.config.CacheConfig;
 import com.az.accounts.domain.Customer;
 import com.az.accounts.exception.CustomerNotFoundException;
 import com.az.accounts.exception.DuplicateEmailException;
 import com.az.accounts.repository.CustomerRepository;
+import com.az.accounts.service.view.CustomerProfile;
 import com.az.accounts.service.view.CustomerView;
 import com.az.accounts.service.view.ViewMapper;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,6 +38,15 @@ public class CustomerService {
         return mapper.toView(
                 customerRepository
                         .findWithAccountsById(id)
+                        .orElseThrow(() -> new CustomerNotFoundException(id)));
+    }
+
+    @Cacheable(cacheNames = CacheConfig.PROFILES, key = "#id")
+    @Transactional(readOnly = true)
+    public CustomerProfile getProfile(Long id) {
+        return mapper.toProfile(
+                customerRepository
+                        .findById(id)
                         .orElseThrow(() -> new CustomerNotFoundException(id)));
     }
 }

@@ -4,6 +4,7 @@ import com.az.accounts.api.dto.CreateCustomerRequest;
 import com.az.accounts.service.AccessPolicy;
 import com.az.accounts.service.CurrentUser;
 import com.az.accounts.service.CustomerService;
+import com.az.accounts.service.view.CustomerProfile;
 import com.az.accounts.service.view.CustomerView;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -66,5 +67,16 @@ public class CustomerController {
     public CustomerView get(@PathVariable Long id, Authentication authentication) {
         accessPolicy.requireCustomer(CurrentUser.from(authentication), id);
         return customerService.get(id);
+    }
+
+    @Operation(summary = "Get a customer's profile (name and email, no accounts)")
+    @ApiResponse(responseCode = "200", description = "The profile")
+    @ApiResponse(
+            responseCode = "404",
+            description = "Customer not found, or it belongs to someone else")
+    @GetMapping("/{id}/profile")
+    public CustomerProfile profile(@PathVariable Long id, Authentication authentication) {
+        accessPolicy.requireCustomer(CurrentUser.from(authentication), id);
+        return customerService.getProfile(id);
     }
 }
