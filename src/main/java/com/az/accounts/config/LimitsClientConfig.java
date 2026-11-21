@@ -12,7 +12,7 @@ import org.springframework.web.client.RestClient;
 public class LimitsClientConfig {
 
     @Bean
-    RestClient limitsRestClient(com.az.accounts.config.LimitsClientProperties properties) {
+    public RestClient limitsRestClient(com.az.accounts.config.LimitsClientProperties properties) {
         HttpClient httpClient =
                 HttpClient.newBuilder()
                         .version(
