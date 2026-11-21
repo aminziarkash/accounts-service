@@ -1,0 +1,26 @@
+meta {
+  name: Check: invalid request (negative amount)
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{limitsUrl}}/api/v1/limits/check
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "accountId": 1,
+    "currency": "USD",
+    "amount": "-5.00",
+    "operation": "DEPOSIT"
+  }
+}
+
+tests {
+  test("rejected with 400", function () {
+    expect(res.getStatus()).to.equal(400);
+  });
+}

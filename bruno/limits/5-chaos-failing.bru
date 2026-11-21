@@ -1,0 +1,18 @@
+meta {
+  name: Chaos: make it fail (503)
+  type: http
+  seq: 5
+}
+
+put {
+  url: {{limitsUrl}}/admin/chaos
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "delayMillis": 0,
+    "failing": true
+  }
+}
