@@ -1,0 +1,21 @@
+spring:
+  application:
+    name: limits-service
+
+app:
+  limits:
+    max-deposit: 10000.00
+    max-withdrawal: 2000.00
+    max-transfer: 5000.00
+
+server:
+  port: 8100
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  metrics:
+    tags:
+      application: ${spring.application.name}
