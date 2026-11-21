@@ -7,6 +7,8 @@ app:
     max-deposit: 10000.00
     max-withdrawal: 2000.00
     max-transfer: 5000.00
+  chaos:
+    enabled: true   # demo switch for failure tests
 
 server:
   port: 8100

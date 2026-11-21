@@ -11,9 +11,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class LimitsController {
 
     private final LimitsService service;
+    private final ChaosState chaosState;
 
-    public LimitsController(LimitsService service) {
+    public LimitsController(LimitsService service, ChaosState chaosState) {
         this.service = service;
+        this.chaosState = chaosState;
     }
 
     /**
@@ -24,6 +26,7 @@ public class LimitsController {
      */
     @PostMapping("/check")
     public CheckResponse check(@Valid @RequestBody CheckRequest request) {
+        chaosState.apply();
         return service.check(request);
     }
 }
