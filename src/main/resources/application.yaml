@@ -45,6 +45,11 @@ app:
   cache:
     profile-max-size: 1000
     profile-ttl: PT5M
+  limits-client:
+    enabled: true
+    base-url: ${LIMITS_BASE_URL:http://localhost:8100}
+    connect-timeout: PT0.5S
+    read-timeout: PT1S
 
 server:
   shutdown: graceful

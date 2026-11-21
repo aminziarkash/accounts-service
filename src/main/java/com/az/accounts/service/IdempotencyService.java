@@ -45,11 +45,28 @@ public class IdempotencyService {
             Supplier<T> action,
             Function<T, String> toRef,
             Function<String, T> fromRef) {
+        return execute(key, requestHash, () -> {}, action, toRef, fromRef);
+    }
+
+    /**
+     * @param beforeTransaction runs after the replay check and before the transaction opens, so it
+     *     is never run for a replay and never holds a database transaction (for example a call to
+     *     another service)
+     */
+    public <T> T execute(
+            String key,
+            String requestHash,
+            Runnable beforeTransaction,
+            Supplier<T> action,
+            Function<T, String> toRef,
+            Function<String, T> fromRef) {
 
         Optional<IdempotencyRecord> existing = records.findById(key);
         if (existing.isPresent()) {
             return replay(existing.get(), requestHash, fromRef);
         }
+
+        beforeTransaction.run();
 
         try {
             return transactionTemplate.execute(status -> {

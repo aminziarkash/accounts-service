@@ -1,5 +1,6 @@
 package com.az.accounts.service;
 
+import com.az.accounts.client.LimitedOperation;
 import com.az.accounts.repository.LedgerEntryRepository;
 import com.az.accounts.service.view.LedgerEntryView;
 import com.az.accounts.service.view.ViewMapper;
@@ -14,16 +15,19 @@ public class IdempotentAccountService {
     private final IdempotencyService idempotency;
     private final LedgerEntryRepository ledgerEntryRepository;
     private final ViewMapper mapper;
+    private final LimitsGuard limits;
 
     public IdempotentAccountService(
             AccountService accountService,
             IdempotencyService idempotency,
             LedgerEntryRepository ledgerEntryRepository,
-            ViewMapper mapper) {
+            ViewMapper mapper,
+            LimitsGuard limits) {
         this.accountService = accountService;
         this.idempotency = idempotency;
         this.ledgerEntryRepository = ledgerEntryRepository;
         this.mapper = mapper;
+        this.limits = limits;
     }
 
     public LedgerEntryView deposit(
@@ -31,6 +35,7 @@ public class IdempotentAccountService {
         return idempotency.execute(
                 IdempotencyService.scope(user.subject(), key),
                 IdempotencyService.hash("DEPOSIT", accountId, amount),
+                () -> limits.requireAllowed(LimitedOperation.DEPOSIT, accountId, amount),
                 () -> accountService.deposit(accountId, amount),
                 entry -> String.valueOf(entry.id()),
                 this::loadEntry);
@@ -41,6 +46,7 @@ public class IdempotentAccountService {
         return idempotency.execute(
                 IdempotencyService.scope(user.subject(), key),
                 IdempotencyService.hash("WITHDRAW", accountId, amount),
+                () -> limits.requireAllowed(LimitedOperation.WITHDRAW, accountId, amount),
                 () -> accountService.withdraw(accountId, amount),
                 entry -> String.valueOf(entry.id()),
                 this::loadEntry);
