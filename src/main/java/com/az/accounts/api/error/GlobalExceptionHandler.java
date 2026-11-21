@@ -6,6 +6,8 @@ import com.az.accounts.exception.DuplicateEmailException;
 import com.az.accounts.exception.IdempotencyKeyReuseException;
 import com.az.accounts.exception.InsufficientFundsException;
 import com.az.accounts.exception.InvalidOperationException;
+import com.az.accounts.exception.LimitExceededException;
+import com.az.accounts.exception.LimitsUnavailableException;
 import com.az.accounts.exception.RateLimitExceededException;
 import java.util.ArrayList;
 import java.util.List;
@@ -168,6 +170,21 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                                 "The account is busy. Try again shortly."));
     }
 
+    // 503: the limits service did not answer. Fail closed: the request was refused, nothing
+    // changed.
+    @ExceptionHandler(LimitsUnavailableException.class)
+    public ResponseEntity<ProblemDetail> handleLimitsUnavailable(LimitsUnavailableException ex) {
+        log.warn("Limits service unavailable", ex);
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                .header(HttpHeaders.RETRY_AFTER, "5")
+                .body(
+                        problem(
+                                HttpStatus.SERVICE_UNAVAILABLE,
+                                "Limits check unavailable",
+                                "The limits service did not answer, so the request was refused."
+                                        + " Nothing was changed. Try again shortly."));
+    }
+
     // 429: the caller used up their tokens. Nothing was changed, so retrying later is safe.
     @ExceptionHandler(RateLimitExceededException.class)
     public ResponseEntity<ProblemDetail> handleRateLimit(RateLimitExceededException ex) {
@@ -190,7 +207,8 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     @ExceptionHandler({
         InsufficientFundsException.class,
         InvalidOperationException.class,
-        IdempotencyKeyReuseException.class
+        IdempotencyKeyReuseException.class,
+        LimitExceededException.class
     })
     public ProblemDetail handleBusinessRule(RuntimeException ex) {
         return problem(HttpStatus.UNPROCESSABLE_ENTITY, "Business rule violated", ex.getMessage());
