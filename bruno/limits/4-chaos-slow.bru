@@ -1,0 +1,18 @@
+meta {
+  name: Chaos: make it slow (3 seconds)
+  type: http
+  seq: 4
+}
+
+put {
+  url: {{limitsUrl}}/admin/chaos
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "delayMillis": 3000,
+    "failing": false
+  }
+}
