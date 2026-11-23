@@ -40,3 +40,19 @@ jobs:
           cache-dependency-path: notifications-service/pom.xml
       - name: Build and test
         run: ./mvnw -B verify
+
+  limits:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: limits-service
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+          cache-dependency-path: limits-service/pom.xml
+      - name: Build and test
+        run: ./mvnw -B verify
