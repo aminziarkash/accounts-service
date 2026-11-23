@@ -1,0 +1,34 @@
+meta {
+  name: 14. Breaker state: must be closed again
+  type: http
+  seq: 14
+}
+
+get {
+  url: {{baseUrl}}/actuator/prometheus
+  body: none
+  auth: none
+}
+
+tests {
+  const raw = res.getBody();
+  const text = typeof raw === "string" ? raw : JSON.stringify(raw);
+  const lines = text.split("\n");
+  const stateLines = lines.filter(function (l) {
+    return l.startsWith("resilience4j_circuitbreaker_state{") && l.includes('name="limits"');
+  });
+  const active = stateLines.find(function (l) { return /\s1(\.0)?$/.test(l.trim()); });
+  const found = active ? active.match(/state="(\w+)"/) : null;
+  const state = found ? found[1] : "unknown";
+  const blockedLine = lines.find(function (l) {
+    return l.startsWith("resilience4j_circuitbreaker_not_permitted_calls_total") && l.includes('name="limits"');
+  });
+  const blocked = blockedLine ? blockedLine.trim().split(/\s+/).pop() : "n/a";
+
+  test("breaker state is " + state + " (expected closed)", function () {
+    expect(state).to.equal("closed");
+  });
+  test("calls refused without touching the network so far: " + blocked, function () {
+    expect(true).to.equal(true);
+  });
+}

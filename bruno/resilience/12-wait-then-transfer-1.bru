@@ -1,0 +1,33 @@
+meta {
+  name: 12. Wait 11 s, then transfer (half-open test call 1)
+  type: http
+  seq: 12
+}
+
+post {
+  url: {{baseUrl}}/api/v1/transfers
+  body: json
+  auth: inherit
+}
+
+headers {
+  Idempotency-Key: {{$guid}}
+}
+
+body:json {
+  {
+    "fromAccountId": {{accountA}},
+    "toAccountId": {{accountB}},
+    "amount": "1.00"
+  }
+}
+
+script:pre-request {
+  await bru.sleep(11000);
+}
+
+tests {
+  test("transfer went through", function () {
+    expect([200, 201]).to.include(res.status);
+  });
+}

@@ -1,0 +1,11 @@
+meta {
+  name: 11. Repair limits-service
+  type: http
+  seq: 11
+}
+
+delete {
+  url: {{limitsUrl}}/admin/chaos
+  body: none
+  auth: none
+}

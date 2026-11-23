@@ -1,0 +1,15 @@
+meta {
+  name: 3. Break it: limits-service answers in 3 seconds
+  type: http
+  seq: 3
+}
+
+put {
+  url: {{limitsUrl}}/admin/chaos
+  body: json
+  auth: none
+}
+
+body:json {
+  { "delayMillis": 3000, "failing": false }
+}
