@@ -3,7 +3,7 @@ package com.az.accounts.service;
 import com.az.accounts.client.LimitedOperation;
 import com.az.accounts.client.LimitsCheckRequest;
 import com.az.accounts.client.LimitsCheckResponse;
-import com.az.accounts.client.LimitsClient;
+import com.az.accounts.client.ResilientLimitsClient;
 import com.az.accounts.config.LimitsClientProperties;
 import com.az.accounts.domain.Account;
 import com.az.accounts.exception.AccountNotFoundException;
@@ -19,12 +19,14 @@ import org.springframework.stereotype.Service;
 @Service
 public class LimitsGuard {
 
-    private final LimitsClient client;
+    private final ResilientLimitsClient client;
     private final AccountRepository accounts;
     private final LimitsClientProperties properties;
 
     public LimitsGuard(
-            LimitsClient client, AccountRepository accounts, LimitsClientProperties properties) {
+            ResilientLimitsClient client,
+            AccountRepository accounts,
+            LimitsClientProperties properties) {
         this.client = client;
         this.accounts = accounts;
         this.properties = properties;

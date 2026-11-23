@@ -50,6 +50,14 @@ app:
     base-url: ${LIMITS_BASE_URL:http://localhost:8100}
     connect-timeout: PT0.5S
     read-timeout: PT1S
+    resilience:
+      retry-max-attempts: 2
+      retry-wait: PT0.1S
+      breaker-window-size: 10
+      breaker-min-calls: 5
+      breaker-failure-rate-percent: 50
+      breaker-open-duration: PT10S
+      breaker-half-open-calls: 2
 
 server:
   shutdown: graceful
