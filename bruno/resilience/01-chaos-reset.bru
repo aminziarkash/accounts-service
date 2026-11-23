@@ -1,0 +1,11 @@
+meta {
+  name: 1. Start clean: limits-service normal
+  type: http
+  seq: 1
+}
+
+delete {
+  url: {{limitsUrl}}/admin/chaos
+  body: none
+  auth: none
+}

@@ -1,0 +1,32 @@
+meta {
+  name: 5. Transfer while limits is down (2 of 6)
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{baseUrl}}/api/v1/transfers
+  body: json
+  auth: inherit
+}
+
+headers {
+  Idempotency-Key: {{$guid}}
+}
+
+body:json {
+  {
+    "fromAccountId": {{accountA}},
+    "toAccountId": {{accountB}},
+    "amount": "1.00"
+  }
+}
+
+tests {
+  test("refused with 503 (fail closed)", function () {
+    expect(res.status).to.equal(503);
+  });
+  test("Retry-After is 5", function () {
+    expect(res.getHeader("retry-after")).to.equal("5");
+  });
+}
