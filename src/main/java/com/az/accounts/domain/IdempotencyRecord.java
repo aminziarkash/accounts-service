@@ -3,14 +3,18 @@ package com.az.accounts.domain;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
+import jakarta.persistence.PostLoad;
+import jakarta.persistence.PostPersist;
 import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
 import java.time.Instant;
 import java.util.Objects;
 import org.hibernate.annotations.CreationTimestamp;
+import org.springframework.data.domain.Persistable;
 
 @Entity
 @Table(name = "idempotency_record")
-public class IdempotencyRecord {
+public class IdempotencyRecord implements Persistable {
 
     @Id
     @Column(name = "idempotency_key")
@@ -26,6 +30,9 @@ public class IdempotencyRecord {
     @CreationTimestamp
     @Column(updatable = false)
     private Instant createdAt;
+
+    // true until the row has been inserted or loaded: tells Spring Data to INSERT, never merge
+    @Transient private boolean newRecord = true;
 
     protected IdempotencyRecord() {}
 
@@ -52,5 +59,21 @@ public class IdempotencyRecord {
 
     public Instant getCreatedAt() {
         return createdAt;
+    }
+
+    @Override
+    public String getId() {
+        return idempotencyKey;
+    }
+
+    @Override
+    public boolean isNew() {
+        return newRecord;
+    }
+
+    @PostPersist
+    @PostLoad
+    void markNotNew() {
+        this.newRecord = false;
     }
 }
