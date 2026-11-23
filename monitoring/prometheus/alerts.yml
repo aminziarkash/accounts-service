@@ -60,3 +60,14 @@ groups:
           severity: page
         annotations:
           summary: "More than 5% of accounts-service requests fail with a 5xx"
+
+  - name: accounts-resilience
+    rules:
+      - alert: LimitsCircuitBreakerOpen
+        expr: resilience4j_circuitbreaker_state{name="limits",state="open"} == 1
+        for: 30s
+        labels:
+          severity: page
+        annotations:
+          summary: "The limits circuit breaker is open, money operations are refused"
+          description: "accounts-service gets no answer from limits-service and fails closed with a 503. Check limits-service health and latency."
