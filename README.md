@@ -249,7 +249,7 @@ they do not know. A replayed idempotent request writes no second event.
 |-----------------------------------------|-----------------------------------------------------------|----------|
 | [001](docs/adr/001-locking-strategy.md) | Pessimistic locking for balances, optimistic for profiles | Accepted |
 | [002](docs/adr/002-caching-policy.md)   | Caching policy: what is cached and what never is          | Accepted |
-| 003                                     | Event model and messaging style                           | Planned  |
+| [003](docs/adr/003-events-and-messaging.md) | Outbox, Kafka, idempotent consumer and dead letters    | Accepted |
 | [004](docs/adr/004-resilience.md)       | Timeouts, retry, circuit breaker and failing closed       | Accepted |
 | [005](docs/adr/005-observability.md)    | Observability: what we monitor, alert on and why          | Accepted |
 
