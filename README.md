@@ -2,7 +2,8 @@
 
 Banking accounts service built with Spring Boot 4, PostgreSQL and Testcontainers: ledger, safe money movement under
 concurrency, a validated REST API, idempotent money operations, JWT security with Keycloak and reliable events through a
-transactional outbox to Kafka, consumed by a second service, `notifications-service`. Caching is planned.
+transactional outbox to Kafka, consumed by a second service, `notifications-service`. Profile reads are cached, and a synchronous call to a third service, `limits-service`, is
+protected with timeouts, retry and a circuit breaker.
 
 ![CI](https://github.com/aminziarkash/accounts-service/actions/workflows/ci.yml/badge.svg)
 
@@ -51,6 +52,11 @@ Built:
   entries for 5 minutes by default, set under `app.cache`. Balances and accounts are never cached, and the ownership
   check runs before the cache on every request. Changing a name evicts the entry. Hits and misses show up as
   `cache_gets_total`. See ADR-002.
+- **Resilience.** Before money moves, accounts-service asks `limits-service` whether the amount is allowed. The call
+  runs outside the database transaction, with a 500 ms connect and 1 s read timeout, a retry with exponential backoff
+  and jitter, and a circuit breaker (Resilience4j). If limits cannot answer, the operation is refused with `503` and
+  `Retry-After` and nothing changes (fail closed); a denial is a `422`. The breaker state is in
+  `/actuator/prometheus` and a `LimitsCircuitBreakerOpen` alert watches it. See ADR-004.
 
 ## Stack
 
@@ -68,10 +74,11 @@ Built:
 | Testing              | JUnit 5, AssertJ, Mockito, MockMvc, Testcontainers (real PostgreSQL, no H2), ArchUnit             |
 | Build and quality    | Maven wrapper, Spotless (google-java-format), GitHub Actions CI                                   |
 | Messaging            | Transactional outbox, Kafka (KRaft, single broker locally), Spring for Apache Kafka               |
+| Resilience           | Resilience4j (retry, circuit breaker), explicit HTTP timeouts, WireMock for failure tests         |
 | Observability        | Micrometer, Prometheus, Grafana, Kafka exporter, alert rules in `monitoring/`                     |
 | Local tooling        | Docker Compose, Keycloak, Dockerfile, Bruno collection in `bruno/`                                |
 
-**Planned:** Caffeine caching, Resilience4j, distributed tracing.
+**Planned:** distributed tracing.
 
 ## Run it
 
@@ -126,6 +133,24 @@ cd notifications-service && ./mvnw spring-boot:run     # port 8090, group "notif
 Check the group's progress with `kafka-consumer-groups.sh --describe --group notifications-service` and the results
 with `select * from notifications` in the `notifications` database.
 
+### limits-service
+
+A small Spring Boot app in `limits-service/` (own `pom.xml` and Maven wrapper, port 8100, no database). It answers
+`POST /api/v1/limits/check` with `allowed` and a reason, using the maximum per operation under `app.limits`
+(deposit 10000, withdrawal 2000, transfer 5000). accounts-service calls it before every deposit, withdrawal and
+transfer, so start it before you try money operations:
+
+```bash
+cd limits-service && ./mvnw spring-boot:run            # port 8100
+./mvnw verify
+```
+
+Failure demo: run the `bruno/resilience` folder with the Bruno runner. It makes limits-service answer in 3 seconds,
+sends transfers, shows the first ones taking about 2 seconds (timeout and one retry) and then failing in a few
+milliseconds once the circuit breaker is open, then repairs the service and shows the breaker closing again. The
+`bruno/limits` folder has the single requests, including the chaos switch (`/admin/chaos`, only while
+`app.chaos.enabled=true`). To run accounts-service in Docker, point it at limits with `LIMITS_BASE_URL`.
+
 ### Observability
 
 `docker compose up -d` also starts Prometheus, Grafana and a Kafka exporter. Run both apps on the host, then open:
@@ -156,6 +181,7 @@ docker run --rm -p 8080:8080 \
   -e SPRING_DATASOURCE_URL=jdbc:postgresql://host.docker.internal:5433/accounts \
   -e SPRING_DATASOURCE_USERNAME=accounts -e SPRING_DATASOURCE_PASSWORD=accounts \
   -e KEYCLOAK_JWK_SET_URI=http://host.docker.internal:8180/realms/accounts/protocol/openid-connect/certs \
+  -e LIMITS_BASE_URL=http://host.docker.internal:8100 \
   accounts-service
 ```
 
@@ -224,7 +250,7 @@ they do not know. A replayed idempotent request writes no second event.
 | [001](docs/adr/001-locking-strategy.md) | Pessimistic locking for balances, optimistic for profiles | Accepted |
 | [002](docs/adr/002-caching-policy.md)   | Caching policy: what is cached and what never is          | Accepted |
 | 003                                     | Event model and messaging style                           | Planned  |
-| 004                                     | Resilience4j versus Spring Framework 7 core retry         | Planned  |
+| [004](docs/adr/004-resilience.md)       | Timeouts, retry, circuit breaker and failing closed       | Accepted |
 | [005](docs/adr/005-observability.md)    | Observability: what we monitor, alert on and why          | Accepted |
 
 ## Roadmap
@@ -234,6 +260,7 @@ they do not know. A replayed idempotent request writes no second event.
 - [x] REST API (validation, error handling, idempotent deposits, withdrawals and transfers, OpenAPI)
 - [x] Security (Keycloak, JWT resource server, roles, ownership, per-caller idempotency keys)
 - [x] Caching
+- [x] Resilience: a second service called synchronously, timeouts, retry, circuit breaker, fail closed
 - [x] Event-driven core
   - [x] Transactional outbox and Kafka relay
   - [x] `notifications-service` with an idempotent consumer
@@ -257,6 +284,12 @@ they do not know. A replayed idempotent request writes no second event.
 - There is no Alertmanager locally, so alerts only show in the Prometheus UI. `/actuator/prometheus` is public in the
   API; in production it must be reachable only inside the network or on a management port.
 - Messages in the dead-letter topic are not replayed automatically; someone has to look at them.
+- While limits-service cannot answer, every deposit, withdrawal and transfer is refused (fail closed). Reads are
+  unaffected. Deposits could fail open, but that is a business decision (ADR-004).
+- The circuit breaker is per instance and its state is lost on restart. Its thresholds are untuned guesses until there
+  is a load test.
+- There is no authentication between accounts-service and limits-service, and the chaos switch of limits-service must
+  be off outside demos.
 - Kafka has two listeners: `localhost:9092` for apps on the host and `kafka:19092` for containers on the Compose
   network. A container started with plain `docker run` outside that network cannot reach the broker.
 - Kafka has no volume locally, so recreating its container loses the topics; create them again (see Events).
