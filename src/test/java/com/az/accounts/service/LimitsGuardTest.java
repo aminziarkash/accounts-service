@@ -11,7 +11,7 @@ import static org.mockito.Mockito.when;
 import com.az.accounts.client.LimitedOperation;
 import com.az.accounts.client.LimitsCheckRequest;
 import com.az.accounts.client.LimitsCheckResponse;
-import com.az.accounts.client.LimitsClient;
+import com.az.accounts.client.ResilientLimitsClient;
 import com.az.accounts.config.LimitsClientProperties;
 import com.az.accounts.domain.Account;
 import com.az.accounts.exception.AccountNotFoundException;
@@ -32,7 +32,7 @@ class LimitsGuardTest {
 
     private static final BigDecimal AMOUNT = new BigDecimal("100.00");
 
-    @Mock private LimitsClient client;
+    @Mock private ResilientLimitsClient client;
     @Mock private AccountRepository accounts;
 
     private LimitsGuard guard;
