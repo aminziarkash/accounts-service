@@ -80,6 +80,7 @@ public class OutboxPublisher {
                         properties.topic(), event.getAggregateId(), event.getPayload());
         record.headers().add("event-id", bytes(event.getEventId().toString()));
         record.headers().add("event-type", bytes(event.getEventType().name()));
+        record.headers().add("event-seq", bytes(String.valueOf(event.getId())));
         return record;
     }
 
