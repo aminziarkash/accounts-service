@@ -16,7 +16,9 @@ We also have to decide what a consumer does with a duplicate, an out-of-order ev
 2. **A relay publishes the outbox.** `OutboxRelay` polls every 0.5 s. `OutboxPublisher.publishBatch` locks up to 50
    unpublished rows with `FOR UPDATE SKIP LOCKED`, sends them in id order, waits for the broker acknowledgement
    (5 s timeout), then marks each row published. It stops at the first failure so the order is kept and the row is
-   retried on the next poll.
+   retried on the next poll. **Only one relay works at a time**: each batch starts with a Postgres advisory lock
+   (`pg_try_advisory_xact_lock`). A relay that does not get the lock returns at once and tries again at the next poll.
+   The lock belongs to the transaction, so it is released at commit, rollback or a crashed connection.
 3. **Delivery is at least once.** A crash after the broker acknowledged but before the row is marked published sends
    that event again. We accept duplicates and make the consumer safe, instead of trying for exactly once.
 4. **Producer settings:** `acks=all`, `enable.idempotence=true` (no duplicates from producer retries), and
@@ -63,10 +65,17 @@ We also have to decide what a consumer does with a duplicate, an out-of-order ev
 - **Events can be delayed** by up to the poll interval, and longer while Kafka is down. The outbox grows and the
   `OutboxPublishFailing` alert and the pending-rows metric show it.
 - **Duplicates reach the consumer.** Every consumer must be idempotent. This is a rule for every new consumer.
-- **Order per account holds with one relay instance.** With several instances, `SKIP LOCKED` lets instance B publish
-  rows 51 to 100 while instance A still holds rows 1 to 50, so two events of the same account can swap places. If order
-  matters across instances: run one active relay (a lock or ShedLock), or give each relay a fixed set of accounts
-  (id modulo the instance count). Not solved yet; see the ordering test in the roadmap.
+- **Order per account holds, with a price.** Rows go out in id order and only one relay publishes at a time, so
+  events of one account reach Kafka in the order they were written. Events of one account are written in order
+  because the account row lock serializes them. Before the advisory lock, two relays could swap two events: with
+  `SKIP LOCKED`, relay B could publish rows 51 to 100 while relay A still held rows 1 to 50. The price is that publishing
+  speed is limited to one relay. If that is ever too slow, give each relay a fixed set of accounts (account id modulo the
+  number of relays) instead of one global lock.
+- **The consumer does not check order yet.** The event id stops duplicates, not a swap. A replay from the dead-letter
+  topic or a second producer could still deliver events of one account backwards. Planned: a per-account sequence in
+  the event, and the consumer refuses anything older than what it already applied.
+- **A dead-lettered message loses its place in the order.** Later events for the same key are processed while it
+  waits. Whether that is acceptable depends on the data; for money it needs an ordered recovery process.
 - **Published outbox rows are never deleted yet.** The table only grows. A cleanup job is needed.
 - **Dead-lettered messages are not replayed automatically.** Someone must look at them, fix the cause, and replay
   (the runbook is still to be written). Replay is safe only because consumers are idempotent.
@@ -78,6 +87,8 @@ We also have to decide what a consumer does with a duplicate, an out-of-order ev
 
 - `OutboxIntegrationTest`: the event is stored with the money movement and published to a real Kafka (Testcontainers).
 - `OutboxPublisherTest`: order is kept, publishing stops at the first failure, the failed row is retried.
+- `OutboxOrderingTest`: two relays and two events of one account. The first relay is held while it owns row 1; the
+  second runs in the meantime. Before the advisory lock the test failed (20.00 reached Kafka before 10.00). Now it passes.
 - `OutboxMetricsTest`: pending and failure metrics.
 - `NotificationServiceTest` and `AccountEventsListenerIntegrationTest`: a duplicate changes nothing, headers are
   required, the event produces one notification.

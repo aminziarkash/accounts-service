@@ -20,4 +20,9 @@ public interface OutboxEventRepository extends JpaRepository<OutboxEvent, Long> 
 
     @Query("select min(e.createdAt) from OutboxEvent e where e.publishedAt is null")
     Instant findOldestPendingCreatedAt();
+
+    // true if this transaction got the lock, false if another relay already has it; released at
+    // commit or rollback
+    @Query(value = "select pg_try_advisory_xact_lock(:key)", nativeQuery = true)
+    boolean tryRelayLock(@Param("key") long key);
 }
