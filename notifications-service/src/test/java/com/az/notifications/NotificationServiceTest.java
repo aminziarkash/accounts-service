@@ -11,6 +11,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+
+import io.micrometer.core.instrument.MeterRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -35,6 +37,7 @@ class NotificationServiceTest {
     @Autowired NotificationService service;
     @Autowired NotificationRepository notifications;
     @Autowired JdbcTemplate jdbc;
+    @Autowired MeterRegistry registry;
 
     @BeforeEach
     void clean() {
@@ -45,6 +48,34 @@ class NotificationServiceTest {
 
     private int processedCount() {
         return jdbc.queryForObject("select count(*) from processed_events", Integer.class);
+    }
+
+    // counters keep their value across tests in the same context, so tests compare differences
+    private double count(String name) {
+        return registry.counter(name).count();
+    }
+
+    @Test
+    void onlyARedeliveredEventIsCountedAsADuplicate() {
+        double before = count("notifications.events.duplicates");
+        UUID id = UUID.randomUUID();
+
+        service.handle(id, "MONEY_DEPOSITED", DEPOSIT); // fresh
+        assertThat(count("notifications.events.duplicates") - before).isZero();
+
+        service.handle(id, "MONEY_DEPOSITED", DEPOSIT); // redelivered
+        assertThat(count("notifications.events.duplicates") - before).isEqualTo(1.0);
+    }
+
+    @Test
+    void onlyAnUnknownEventTypeIsCountedAsSkipped() {
+        double before = count("notifications.events.skipped");
+
+        service.handle(UUID.randomUUID(), "MONEY_DEPOSITED", DEPOSIT);
+        assertThat(count("notifications.events.skipped") - before).isZero();
+
+        service.handle(UUID.randomUUID(), "SOMETHING_NEW", "{}");
+        assertThat(count("notifications.events.skipped") - before).isEqualTo(1.0);
     }
 
     @Test

@@ -42,15 +42,13 @@ public class NotificationService {
     public void handle(UUID eventId, String eventType, String payload, String key, Long sequence) {
         if (!processedEvents.markProcessed(eventId)) {
             log.info("Duplicate event {} ignored", eventId);
+            registry.counter("notifications.events.duplicates").increment();
             return;
         }
         if (key != null && sequence != null && !sequenceGuard.advance(key, sequence)) {
             throw new OutOfOrderEventException(key, sequence);
         }
         EventPayload event = jsonMapper.readValue(payload, EventPayload.class);
-
-        registry.counter("notifications.events.duplicates").increment();
-        registry.counter("notifications.events.skipped").increment();
 
         switch (eventType) {
             case "MONEY_DEPOSITED" -> save(eventId, eventType, event.accountId(),
@@ -62,7 +60,10 @@ public class NotificationService {
             case "TRANSFER_COMPLETED" -> save(eventId, eventType, event.fromAccountId(),
                     "Transfer of %s %s from account %s to account %s"
                             .formatted(event.amount(), event.currency(), event.fromAccountId(), event.toAccountId()));
-            default -> log.warn("Unknown event type {} for event {}, skipped", eventType, eventId);
+            default -> {
+                log.warn("Unknown event type {} for event {}, skipped", eventType, eventId);
+                registry.counter("notifications.events.skipped").increment();
+            }
         }
     }
 
