@@ -278,6 +278,9 @@ they do not know. A replayed idempotent request writes no second event.
 - Rate limiting is per instance and in memory. With several instances the limit multiplies, and idle buckets are
   never removed. In production it belongs at the gateway, or in a shared store such as Redis.
 - Events are delivered at least once and in order per account, not exactly once. Consumers must ignore duplicates.
+- Only one relay publishes at a time (a Postgres advisory lock), which is what keeps the order per account. Publishing speed
+  is limited to one relay. The consumer does not check order itself yet: it ignores duplicate event ids, but would apply a
+  swapped pair as it arrives.
 - The relay polls the outbox, so an event can be delayed by up to the poll interval (0.5 seconds by default). Change
   data capture with Debezium would remove the polling, at the cost of running Kafka Connect.
 - Published outbox rows are not deleted yet.

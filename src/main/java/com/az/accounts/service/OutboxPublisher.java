@@ -22,6 +22,9 @@ public class OutboxPublisher {
 
     private static final Logger log = LoggerFactory.getLogger(OutboxPublisher.class);
 
+    // any fixed number, as long as nothing else in this database uses it
+    private static final long RELAY_LOCK_KEY = 727_001L;
+
     private final OutboxEventRepository repository;
     private final KafkaTemplate<String, String> kafkaTemplate;
     private final OutboxProperties properties;
@@ -40,9 +43,15 @@ public class OutboxPublisher {
         this.failureCounter = meterRegistry.counter("outbox.publish.failures");
     }
 
-    /** Sends one batch in order. Returns how many were published. Stops at the first failure. */
+    /**
+     * Sends one batch in order. Returns how many were published. Stops at the first failure. Only
+     * one relay works at a time (an advisory lock), so events of one account keep their order.
+     */
     @Transactional
     public int publishBatch() {
+        if (!repository.tryRelayLock(RELAY_LOCK_KEY)) {
+            return 0; // another relay is publishing; try again at the next poll
+        }
         List<OutboxEvent> batch = repository.lockUnpublishedBatch(properties.batchSize());
         int published = 0;
         for (OutboxEvent event : batch) {
