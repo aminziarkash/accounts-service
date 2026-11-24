@@ -30,10 +30,17 @@ We also have to decide what a consumer does with a duplicate, an out-of-order ev
    dead-letter topic. So at most 3 instances of a consumer group work in parallel; a fourth would sit idle. The partition
    count is hard to change later, because changing it changes which partition a key maps to and breaks the order of
    keys already in the topic.
-6. **Headers carry `event-id` and `event-type`**, so the consumer can deduplicate and route without parsing the body.
+6. **Headers carry `event-id`, `event-type` and `event-seq`**, so the consumer can deduplicate, route and check order
+   without parsing the body. `event-seq` is the outbox row id: it grows with every row, and events of one account are
+   written in order because the account row lock serializes them.
 7. **Idempotent consumer.** `NotificationService.handle` inserts the `event-id` into a processed-events table in the
    same transaction as the side effect. The unique constraint rejects a second insert, and the duplicate changes
    nothing.
+   **Order guard:** after the duplicate check, one upsert on `account_sequences` (one row per message key) only
+   succeeds if `event-seq` is higher than the last one applied for that key. If it is not, the consumer throws
+   `OutOfOrderEventException`: the transaction rolls back (the event is not marked as processed), the error handler does
+   not retry it (retrying a stale event never fixes it), and it goes to the dead-letter topic where someone sees it.
+   An event without an `event-seq` header (older events) is accepted without the check.
 8. **Retries, then a dead-letter topic.** `DefaultErrorHandler` retries 3 times, 1 s apart, then
    `DeadLetterPublishingRecoverer` publishes to `accounts.events.DLT` (partition chosen by the producer, so the DLT does
    not need the same partition count) and the consumer moves on. A missing header or a bad UUID
@@ -71,9 +78,13 @@ We also have to decide what a consumer does with a duplicate, an out-of-order ev
   `SKIP LOCKED`, relay B could publish rows 51 to 100 while relay A still held rows 1 to 50. The price is that publishing
   speed is limited to one relay. If that is ever too slow, give each relay a fixed set of accounts (account id modulo the
   number of relays) instead of one global lock.
-- **The consumer does not check order yet.** The event id stops duplicates, not a swap. A replay from the dead-letter
-  topic or a second producer could still deliver events of one account backwards. Planned: a per-account sequence in
-  the event, and the consumer refuses anything older than what it already applied.
+- **The consumer refuses reordering, but not gaps.** Sequence numbers are not consecutive per account (the outbox id is
+  shared by all accounts), so an event that never arrives is not detected. Detecting gaps would need a per-account
+  counter. Refusing a stale event is the right choice for a consumer that must apply every fact in order. A consumer
+  that only keeps the latest state (each event carries the full balance) could skip a stale event and count it instead.
+- **A refused event is not replayed as it is.** By the time someone looks at it, newer events were applied, so replaying
+  the same message is refused again. Recovery is a decision: accept that the older fact is superseded, or rebuild the
+  affected account by resetting the consumer group offset (runbook still to be written).
 - **A dead-lettered message loses its place in the order.** Later events for the same key are processed while it
   waits. Whether that is acceptable depends on the data; for money it needs an ordered recovery process.
 - **Published outbox rows are never deleted yet.** The table only grows. A cleanup job is needed.
@@ -90,6 +101,8 @@ We also have to decide what a consumer does with a duplicate, an out-of-order ev
 - `OutboxOrderingTest`: two relays and two events of one account. The first relay is held while it owns row 1; the
   second runs in the meantime. Before the advisory lock the test failed (20.00 reached Kafka before 10.00). Now it passes.
 - `OutboxMetricsTest`: pending and failure metrics.
+- `NotificationServiceTest`: a newer event is applied, an older one is refused and not marked as processed, accounts
+  have their own order, a redelivered old event is ignored (not refused), and an event without `event-seq` is accepted.
 - `NotificationServiceTest` and `AccountEventsListenerIntegrationTest`: a duplicate changes nothing, headers are
   required, the event produces one notification.
 - `DeadLetterIntegrationTest`: a bad message is retried, then lands in the DLT, and the next message still works.
