@@ -24,7 +24,7 @@ public class KafkaErrorHandlingConfig {
         DefaultErrorHandler handler = new DefaultErrorHandler(recoverer, new FixedBackOff(1000L, 3L));
 
         // a missing header or a bad UUID fails the same way every time: no retries
-        handler.addNotRetryableExceptions(IllegalArgumentException.class);
+        handler.addNotRetryableExceptions(IllegalArgumentException.class, OutOfOrderEventException.class);
 
         handler.setRetryListeners(new RetryListener() {
             @Override
