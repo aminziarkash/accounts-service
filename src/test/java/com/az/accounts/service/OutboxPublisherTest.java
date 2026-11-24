@@ -84,6 +84,19 @@ class OutboxPublisherTest {
         assertThat(new String(first.headers().lastHeader("event-type").value()))
                 .isEqualTo("MONEY_DEPOSITED");
         assertThat(captor.getAllValues().get(1).value()).contains("20.00");
+
+        Long firstRowId = jdbc.queryForObject("select min(id) from outbox_events", Long.class);
+        assertThat(new String(first.headers().lastHeader("event-seq").value()))
+                .isEqualTo(String.valueOf(firstRowId));
+        long secondSeq =
+                Long.parseLong(
+                        new String(
+                                captor.getAllValues()
+                                        .get(1)
+                                        .headers()
+                                        .lastHeader("event-seq")
+                                        .value()));
+        assertThat(secondSeq).isGreaterThan(firstRowId);
     }
 
     @Test
