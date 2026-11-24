@@ -40,6 +40,7 @@ class NotificationServiceTest {
     void clean() {
         jdbc.update("delete from notifications");
         jdbc.update("delete from processed_events");
+        jdbc.update("delete from account_sequences");
     }
 
     private int processedCount() {
@@ -129,6 +130,52 @@ class NotificationServiceTest {
         assertThat(processedCount()).isZero();
 
         service.handle(id, "MONEY_DEPOSITED", DEPOSIT);
+        assertThat(notifications.count()).isEqualTo(1);
+    }
+
+    @Test
+    void aNewerEventForTheSameAccountIsApplied() {
+        service.handle(UUID.randomUUID(), "MONEY_DEPOSITED", DEPOSIT, "3", 10L);
+        service.handle(UUID.randomUUID(), "MONEY_DEPOSITED", DEPOSIT, "3", 20L);
+
+        assertThat(notifications.count()).isEqualTo(2);
+    }
+
+    @Test
+    void anOlderEventForTheSameAccountIsRefusedAndNotMarkedProcessed() {
+        service.handle(UUID.randomUUID(), "MONEY_DEPOSITED", DEPOSIT, "3", 20L);
+        UUID late = UUID.randomUUID();
+
+        assertThatThrownBy(() -> service.handle(late, "MONEY_DEPOSITED", DEPOSIT, "3", 10L))
+                .isInstanceOf(OutOfOrderEventException.class);
+
+        assertThat(notifications.count()).isEqualTo(1);
+        assertThat(processedCount()).isEqualTo(1);
+    }
+
+    @Test
+    void differentAccountsHaveTheirOwnOrder() {
+        service.handle(UUID.randomUUID(), "MONEY_DEPOSITED", DEPOSIT, "3", 20L);
+        service.handle(UUID.randomUUID(), "MONEY_DEPOSITED", DEPOSIT, "4", 10L);
+
+        assertThat(notifications.count()).isEqualTo(2);
+    }
+
+    @Test
+    void aRedeliveredOldEventIsIgnoredNotRefused() {
+        UUID first = UUID.randomUUID();
+        service.handle(first, "MONEY_DEPOSITED", DEPOSIT, "3", 10L);
+        service.handle(UUID.randomUUID(), "MONEY_DEPOSITED", DEPOSIT, "3", 20L);
+
+        service.handle(first, "MONEY_DEPOSITED", DEPOSIT, "3", 10L); // no exception
+
+        assertThat(notifications.count()).isEqualTo(2);
+    }
+
+    @Test
+    void anEventWithoutASequenceIsStillAccepted() {
+        service.handle(UUID.randomUUID(), "MONEY_DEPOSITED", DEPOSIT, "3", null);
+
         assertThat(notifications.count()).isEqualTo(1);
     }
 }

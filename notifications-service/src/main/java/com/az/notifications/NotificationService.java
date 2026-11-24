@@ -18,23 +18,34 @@ public class NotificationService {
     private final NotificationRepository notifications;
     private final JsonMapper jsonMapper;
     private final MeterRegistry registry;
+    private final SequenceGuard sequenceGuard;
 
     public NotificationService(
             ProcessedEvents processedEvents,
             NotificationRepository notifications,
             JsonMapper jsonMapper,
-            MeterRegistry registry) {
+            MeterRegistry registry, SequenceGuard sequenceGuard) {
         this.processedEvents = processedEvents;
         this.notifications = notifications;
         this.jsonMapper = jsonMapper;
         this.registry = registry;
+        this.sequenceGuard = sequenceGuard;
+    }
+
+    /** For events without ordering information (older events): no order check. */
+    @Transactional
+    public void handle(UUID eventId, String eventType, String payload) {
+        handle(eventId, eventType, payload, null, null);
     }
 
     @Transactional
-    public void handle(UUID eventId, String eventType, String payload) {
+    public void handle(UUID eventId, String eventType, String payload, String key, Long sequence) {
         if (!processedEvents.markProcessed(eventId)) {
             log.info("Duplicate event {} ignored", eventId);
             return;
+        }
+        if (key != null && sequence != null && !sequenceGuard.advance(key, sequence)) {
+            throw new OutOfOrderEventException(key, sequence);
         }
         EventPayload event = jsonMapper.readValue(payload, EventPayload.class);
 

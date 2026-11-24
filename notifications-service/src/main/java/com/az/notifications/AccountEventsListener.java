@@ -31,7 +31,9 @@ public class AccountEventsListener {
         }
         log.info("Received {} id={} key={} partition={} offset={}",
                 eventType, eventId, record.key(), record.partition(), record.offset());
-        notificationService.handle(UUID.fromString(eventId), eventType, record.value());
+        String sequence = header(record, "event-seq");
+        notificationService.handle(UUID.fromString(eventId), eventType, record.value(), record.key(),
+                sequence == null ? null : Long.valueOf(sequence));
     }
 
     private static String header(ConsumerRecord<String, String> record, String name) {
