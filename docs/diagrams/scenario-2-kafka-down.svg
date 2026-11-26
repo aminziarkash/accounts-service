@@ -1,0 +1,79 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2000" height="1100" viewBox="0 0 2000 1100" font-family="Inter,'Helvetica Neue',Arial,'Liberation Sans',sans-serif">
+<defs><marker id="ahi" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,1 L10,5 L0,9 z" fill="#1f2937"/></marker><marker id="ahr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,1 L10,5 L0,9 z" fill="#d9372b"/></marker><marker id="ahg" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,1 L10,5 L0,9 z" fill="#1f8a3b"/></marker><marker id="ahm" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,1 L10,5 L0,9 z" fill="#9ca3af"/></marker></defs>
+<rect width="2000" height="1100" fill="#fff"/>
+<text x="60" y="48" text-anchor="start" font-size="24" font-weight="700" fill="#1f2937">Scenario 2: Kafka is down, so the relay cannot publish</text>
+<text x="60" y="72" text-anchor="start" font-size="14" font-weight="400" fill="#6b7280">The money is safe because the event is saved in the same transaction. Delivery is only late.</text>
+<rect x="400" y="100" width="780" height="490" rx="18" fill="#fdf1c7" stroke="#e0b93c" stroke-width="2" stroke-dasharray="3 6"/>
+<text x="422" y="130" text-anchor="start" font-size="13" font-weight="700" fill="#9a6b00">PRODUCER · accounts-service</text>
+<rect x="60" y="140" width="200" height="70" rx="12" fill="#fff" stroke="#1f2937" stroke-width="2"/>
+<text x="160.0" y="180.0" text-anchor="middle" font-size="15" font-weight="600" fill="#1f2937">Client</text>
+<rect x="440" y="140" width="220" height="70" rx="12" fill="#fff" stroke="#1f2937" stroke-width="2"/>
+<text x="550.0" y="180.0" text-anchor="middle" font-size="15" font-weight="600" fill="#1f2937">Accounts Service</text>
+<polyline points="262,160 438,160" fill="none" stroke="#1f2937" stroke-width="2" marker-end="url(#ahi)" stroke-linejoin="round"/>
+<text x="350" y="150" text-anchor="middle" font-size="13" font-weight="400" fill="#1f2937">deposit</text>
+<polyline points="438,194 262,194" fill="none" stroke="#1f8a3b" stroke-width="2" marker-end="url(#ahg)" stroke-linejoin="round"/>
+<text x="350" y="216" text-anchor="middle" font-size="13" font-weight="600" fill="#1f8a3b">201 Created</text>
+<circle cx="290" cy="194" r="12" fill="#1f8a3b"/><text x="290" y="198.5" text-anchor="middle" font-size="12.5" font-weight="700" fill="#fff">1</text>
+<polyline points="550,212 550,298" fill="none" stroke="#1f2937" stroke-width="2" marker-end="url(#ahi)" stroke-linejoin="round"/>
+<text x="568" y="260" text-anchor="start" font-size="12.5" font-weight="400" fill="#6b7280">one transaction</text>
+<path d="M440,316 v138 a150.0,16 0 0 0 300,0 v-138" fill="#fff" stroke="#1f2937" stroke-width="2"/>
+<ellipse cx="590.0" cy="316" rx="150.0" ry="16" fill="#fff" stroke="#1f2937" stroke-width="2"/>
+<text x="590.0" y="346" text-anchor="middle" font-size="14" font-weight="600" fill="#1f2937">Accounts DB</text>
+<rect x="460" y="355" width="100" height="40" rx="7" fill="#fff" stroke="#1f2937" stroke-width="1.4"/>
+<text x="510.0" y="379.5" text-anchor="middle" font-size="12.5" font-weight="400" fill="#1f2937">accounts</text>
+<rect x="570" y="355" width="150" height="40" rx="7" fill="#fde8e8" stroke="#d9372b" stroke-width="1.4"/>
+<text x="645.0" y="379.5" text-anchor="middle" font-size="12.5" font-weight="400" fill="#d9372b">outbox: pending</text>
+<rect x="570" y="402" width="150" height="34" rx="7" fill="#fff" stroke="#d9372b" stroke-width="1.4"/>
+<text x="645.0" y="423.5" text-anchor="middle" font-size="12.5" font-weight="400" fill="#d9372b">3 rows waiting</text>
+<rect x="900" y="330" width="130" height="70" rx="12" fill="#e5dbff" stroke="#6d4fd1" stroke-width="2"/>
+<text x="965.0" y="370.0" text-anchor="middle" font-size="15" font-weight="600" fill="#1f2937">Relay</text>
+<polyline points="898,350 742,350" fill="none" stroke="#1f2937" stroke-dasharray="1 7" stroke-linecap="round" stroke-width="3" marker-end="url(#ahi)" stroke-linejoin="round"/>
+<circle cx="820" cy="334" r="12" fill="#d9372b"/><text x="820" y="338.5" text-anchor="middle" font-size="12.5" font-weight="700" fill="#fff">2</text>
+<rect x="1330" y="330" width="190" height="80" rx="12" fill="#f9fafb" stroke="#9ca3af" stroke-width="2"/>
+<text x="1425.0" y="367.0" text-anchor="middle" font-size="15" font-weight="600" fill="#9ca3af">Kafka</text>
+<text x="1425.0" y="387.0" text-anchor="middle" font-size="12" font-weight="400" fill="#6b7280">down or unreachable</text>
+<polyline points="1032,365 1328,365" fill="none" stroke="#d9372b" stroke-dasharray="1 7" stroke-linecap="round" stroke-width="3" marker-end="url(#ahr)" stroke-linejoin="round"/>
+<circle cx="1255" cy="365" r="15" fill="#fff" stroke="#d9372b" stroke-width="3"/><path d="M1249,359 L1261,371 M1261,359 L1249,371" stroke="#d9372b" stroke-width="3.5" stroke-linecap="round"/>
+<circle cx="1100" cy="349" r="12" fill="#d9372b"/><text x="1100" y="353.5" text-anchor="middle" font-size="12.5" font-weight="700" fill="#fff">3</text>
+<text x="1190" y="340" text-anchor="middle" font-size="12.5" font-weight="400" fill="#d9372b">no ack within 5 s</text>
+<rect x="1330" y="500" width="230" height="70" rx="12" fill="#f9fafb" stroke="#9ca3af" stroke-width="2"/>
+<text x="1445.0" y="532.0" text-anchor="middle" font-size="15" font-weight="600" fill="#9ca3af">Notifications Service</text>
+<text x="1445.0" y="552.0" text-anchor="middle" font-size="12" font-weight="400" fill="#6b7280">nothing new arrives</text>
+<polyline points="1425,500 1425,412" fill="none" stroke="#9ca3af" stroke-dasharray="1 7" stroke-linecap="round" stroke-width="3" marker-end="url(#ahm)" stroke-linejoin="round"/>
+<text x="965" y="430" text-anchor="middle" font-size="12.5" font-weight="400" fill="#6b7280">retries on its next run</text>
+<circle cx="1100" cy="430" r="12" fill="#6b7280"/><text x="1100" y="434.5" text-anchor="middle" font-size="12.5" font-weight="700" fill="#fff">4</text>
+<text x="965" y="452" text-anchor="middle" font-size="12.5" font-weight="400" fill="#6b7280">stops at the first failure, keeps the order</text>
+<rect x="1220" y="110" width="720" height="64" rx="10" fill="#eaf7ee" stroke="#9bd3a8" stroke-width="1.4"/>
+<text x="1234" y="132" text-anchor="start" font-size="12.5" font-weight="400" fill="#1f8a3b">Kafka comes back: the relay sends the waiting rows in order,</text>
+<text x="1234" y="150" text-anchor="start" font-size="12.5" font-weight="400" fill="#1f8a3b">marks them published, and the consumer catches up.</text>
+<text x="60" y="668" text-anchor="start" font-size="12" font-weight="700" fill="#6b7280">WHAT HAPPENS</text>
+<circle cx="72" cy="698" r="12" fill="#d9372b"/><text x="72" y="702.5" text-anchor="middle" font-size="12.5" font-weight="700" fill="#fff">1</text>
+<text x="96" y="702" text-anchor="start" font-size="13.5" font-weight="400" fill="#1f2937">The deposit commits: balance and outbox row in one transaction. The client gets 201 Created straight away. Kafka</text>
+<text x="96" y="719" text-anchor="start" font-size="13.5" font-weight="400" fill="#1f2937">is not part of this request.</text>
+<circle cx="72" cy="749" r="12" fill="#d9372b"/><text x="72" y="753.5" text-anchor="middle" font-size="12.5" font-weight="700" fill="#fff">2</text>
+<text x="96" y="753" text-anchor="start" font-size="13.5" font-weight="400" fill="#1f2937">The relay polls pending outbox rows, sends them to Kafka and waits for the ack (up to 5 s, acks=all).</text>
+<circle cx="72" cy="783" r="12" fill="#d9372b"/><text x="72" y="787.5" text-anchor="middle" font-size="12.5" font-weight="700" fill="#fff">3</text>
+<text x="96" y="787" text-anchor="start" font-size="13.5" font-weight="400" fill="#1f2937">Kafka does not answer: the send fails or times out. The relay stops at the first failure so the order is kept.</text>
+<text x="96" y="804" text-anchor="start" font-size="13.5" font-weight="400" fill="#1f2937">The row stays unpublished.</text>
+<circle cx="72" cy="834" r="12" fill="#d9372b"/><text x="72" y="838.5" text-anchor="middle" font-size="12.5" font-weight="700" fill="#fff">4</text>
+<text x="96" y="838" text-anchor="start" font-size="13.5" font-weight="400" fill="#1f2937">On its next run the relay tries again. New deposits keep committing and the pending rows pile up in the outbox.</text>
+<text x="96" y="855" text-anchor="start" font-size="13.5" font-weight="400" fill="#1f2937">Nothing is lost.</text>
+<circle cx="72" cy="885" r="12" fill="#d9372b"/><text x="72" y="889.5" text-anchor="middle" font-size="12.5" font-weight="700" fill="#fff">5</text>
+<text x="96" y="889" text-anchor="start" font-size="13.5" font-weight="400" fill="#1f2937">When Kafka is back the relay publishes everything in order and marks it published. Notifications arrive late,</text>
+<text x="96" y="906" text-anchor="start" font-size="13.5" font-weight="400" fill="#1f2937">not missing.</text>
+<rect x="1010" y="650" width="930" height="320" rx="14" fill="#f3f4f6" stroke="#d1d5db" stroke-width="1.5"/>
+<text x="1032" y="678" text-anchor="start" font-size="12" font-weight="700" fill="#6b7280">HOW IT ENDS</text>
+<text x="1032" y="708" text-anchor="start" font-size="13.5" font-weight="700" fill="#1f2937">Client sees</text>
+<text x="1170" y="708" text-anchor="start" font-size="13.5" font-weight="400" fill="#1f2937">Normal 201 Created. The failure is invisible to the client.</text>
+<text x="1032" y="741" text-anchor="start" font-size="13.5" font-weight="700" fill="#1f2937">Data</text>
+<text x="1170" y="741" text-anchor="start" font-size="13.5" font-weight="400" fill="#1f2937">Balance correct, outbox rows pending. Notifications are late, not lost.</text>
+<text x="1032" y="774" text-anchor="start" font-size="13.5" font-weight="700" fill="#1f2937">Signal</text>
+<text x="1170" y="774" text-anchor="start" font-size="13.5" font-weight="400" fill="#1f2937">OutboxPublishFailing (warn, after 1 min). OutboxEventStuck (page) when the oldest pending row is</text>
+<text x="1170" y="791" text-anchor="start" font-size="13.5" font-weight="400" fill="#1f2937">older than 60 s for 2 min.</text>
+<text x="1032" y="824" text-anchor="start" font-size="13.5" font-weight="700" fill="#1f2937">Recovery</text>
+<text x="1170" y="824" text-anchor="start" font-size="13.5" font-weight="400" fill="#1f2937">Automatic when Kafka returns. Meanwhile check the relay logs and the broker. The outbox is never</text>
+<text x="1170" y="841" text-anchor="start" font-size="13.5" font-weight="400" fill="#1f2937">deleted, so it can always be replayed.</text>
+<rect x="60" y="990" width="1880" height="76" rx="14" fill="#1f2937"/>
+<text x="86" y="1018" text-anchor="start" font-size="11.5" font-weight="700" fill="#9ca3af">SAY IT ALOUD</text>
+<text x="86" y="1042" text-anchor="start" font-size="15" font-weight="500" fill="#fff">If Kafka is down, the event waits in the outbox and goes out later, in order. We trade speed for never losing an event, and the client never notices.</text>
+</svg>
