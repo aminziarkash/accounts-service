@@ -96,9 +96,13 @@ We also have to decide what a consumer does with a duplicate, an out-of-order ev
   waits. Whether that is acceptable depends on the data; for money it needs an ordered recovery process.
 - **Published outbox rows are never deleted yet.** The table only grows. A cleanup job is needed.
 - **Dead-lettered messages are not replayed automatically.** Someone must look at them, fix the cause, and replay
-  (the runbook is still to be written). Replay is safe only because consumers are idempotent.
-- **The event schema has one version.** Changing a field needs a plan (add optional fields, never rename or remove, or
-  add a version header) before another consumer exists.
+  ([runbook](../runbook-event-replay.md)). Replay is safe only because consumers are idempotent.
+- **Events evolve by adding, never by changing.** New fields are optional, and consumers ignore what they do not know
+  (a tolerant reader: `@JsonIgnoreProperties(ignoreUnknown = true)`), so old and new versions can run side by side
+  during a rollout. A rename, a removal or a change of meaning needs a new event type or topic and a period where
+  both exist. `MoneyDeposited` is at version 2: it added `correlationId` (null when no web request caused the event)
+  and `schemaVersion` (absent means 1). `MoneyWithdrawn` and `TransferCompleted` are still version 1, so one topic
+  carries mixed versions. There is no schema registry, so nothing enforces this rule except the tests below.
 - **No authentication on the local broker** (PLAINTEXT listeners). In production: TLS and SASL.
 
 ## Evidence
@@ -108,6 +112,12 @@ We also have to decide what a consumer does with a duplicate, an out-of-order ev
 - `OutboxOrderingTest`: two relays and two events of one account. The first relay is held while it owns row 1; the
   second runs in the meantime. Before the advisory lock the test failed (20.00 reached Kafka before 10.00). Now it passes.
 - `OutboxMetricsTest`: pending and failure metrics.
+- `MoneyDepositedSchemaTest`: the version 1 fields keep their names and types, the new fields are added, and a null
+  correlation id still gives a valid event. `OutboxIntegrationTest` checks the id of the request ends up in the stored
+  event.
+- `EventPayloadTest`: both directions of compatibility. A new consumer reads an old event (new fields missing), and an
+  old consumer shape reads a new event. `NotificationServiceTest` adds a version 1, a version 2 and a "future" event with
+  unknown fields, all handled, and checks the correlation id is in the log lines while handling and gone afterwards.
 - `NotificationServiceTest`: a newer event is applied, an older one is refused and not marked as processed, accounts
   have their own order, a redelivered old event is ignored (not refused), and an event without `event-seq` is accepted.
 - `NotificationServiceTest` and `AccountEventsListenerIntegrationTest`: a duplicate changes nothing, headers are

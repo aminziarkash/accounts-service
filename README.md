@@ -271,6 +271,10 @@ The decisions behind these are in [ADR-003](docs/adr/003-events-and-messaging.md
 The type strings are a contract: add new types and new fields freely, never rename or remove. Consumers ignore what
 they do not know. A replayed idempotent request writes no second event.
 
+`MONEY_DEPOSITED` is at schema version 2: it added `correlationId` (the id of the request that caused the event, `null`
+when there was none) and `schemaVersion`. A missing `schemaVersion` means version 1, and the other two event types are
+still version 1. Old consumers ignore the new fields and new consumers accept old events; tests cover both directions.
+
 ## Decisions
 
 | ADR                                         | Decision                                                  | Status   |
@@ -294,7 +298,8 @@ they do not know. A replayed idempotent request writes no second event.
     - [x] `notifications-service` with an idempotent consumer
     - [x] Retries and a dead-letter topic
 - [x] Failure handling: event order, dead letters, replay runbook
-- [ ] Schema evolution, read model
+- [x] Schema evolution (`MoneyDeposited` v2)
+- [ ] Read model
 - [x] Observability: metrics, Prometheus, Grafana, Kafka lag, alert rules
 - [ ] Delivery: tracing, Kubernetes manifests
 
