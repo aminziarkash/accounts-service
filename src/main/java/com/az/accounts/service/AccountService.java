@@ -21,6 +21,8 @@ import com.az.accounts.service.view.ViewMapper;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
+
+import org.slf4j.MDC;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -28,6 +30,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class AccountService {
+
+    // same key as CorrelationIdFilter; the service must not depend on the web package
+    private static final String CORRELATION_ID = "correlationId";
 
     private final AccountRepository accountRepository;
     private final LedgerEntryRepository ledgerEntryRepository;
@@ -61,7 +66,9 @@ public class AccountService {
                         ledgerEntryView.amount(),
                         account.getCurrency(),
                         ledgerEntryView.balanceAfter(),
-                        Instant.now());
+                        Instant.now(),
+                        MDC.get(CORRELATION_ID),
+                        MoneyDeposited.SCHEMA_VERSION);
         outboxService.record(
                 AggregateType.ACCOUNT,
                 String.valueOf(
