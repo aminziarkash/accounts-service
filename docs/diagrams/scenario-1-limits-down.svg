@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2000" height="1100" viewBox="0 0 2000 1100" font-family="Inter,'Helvetica Neue',Arial,'Liberation Sans',sans-serif">
+<defs><marker id="ahi" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,1 L10,5 L0,9 z" fill="#1f2937"/></marker><marker id="ahr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,1 L10,5 L0,9 z" fill="#d9372b"/></marker><marker id="ahg" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,1 L10,5 L0,9 z" fill="#1f8a3b"/></marker><marker id="ahm" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,1 L10,5 L0,9 z" fill="#9ca3af"/></marker></defs>
+<rect width="2000" height="1100" fill="#fff"/>
+<text x="60" y="48" text-anchor="start" font-size="24" font-weight="700" fill="#1f2937">Scenario 1: the Limits service does not answer</text>
+<text x="60" y="72" text-anchor="start" font-size="14" font-weight="400" fill="#6b7280">Fail closed: the money does not move unless Limits says yes.</text>
+<rect x="400" y="110" width="780" height="470" rx="18" fill="#fdf1c7" stroke="#e0b93c" stroke-width="2" stroke-dasharray="3 6"/>
+<text x="422" y="140" text-anchor="start" font-size="13" font-weight="700" fill="#9a6b00">PRODUCER · accounts-service</text>
+<rect x="1320" y="110" width="300" height="330" rx="18" fill="#e8eefc" stroke="#7b8fd6" stroke-width="2" stroke-dasharray="3 6"/>
+<text x="1342" y="140" text-anchor="start" font-size="13" font-weight="700" fill="#3b4fa8">LIMITS · limits-service</text>
+<rect x="60" y="250" width="200" height="80" rx="12" fill="#fff" stroke="#1f2937" stroke-width="2"/>
+<text x="160.0" y="287.0" text-anchor="middle" font-size="15" font-weight="600" fill="#1f2937">Client</text>
+<text x="160.0" y="307.0" text-anchor="middle" font-size="12" font-weight="400" fill="#6b7280">deposit $100</text>
+<rect x="440" y="250" width="220" height="90" rx="12" fill="#fff" stroke="#1f2937" stroke-width="2"/>
+<text x="550.0" y="300.0" text-anchor="middle" font-size="15" font-weight="600" fill="#1f2937">Accounts Service</text>
+<rect x="790" y="240" width="170" height="110" rx="12" fill="#fde8e8" stroke="#d9372b" stroke-width="2" stroke-dasharray="7 5"/>
+<text x="875.0" y="292.0" text-anchor="middle" font-size="14" font-weight="600" fill="#1f2937">Circuit breaker</text>
+<text x="875.0" y="312.0" text-anchor="middle" font-size="12" font-weight="400" fill="#6b7280">OPEN for 10 s</text>
+<rect x="1360" y="250" width="220" height="90" rx="12" fill="#f9fafb" stroke="#9ca3af" stroke-width="2"/>
+<text x="1470.0" y="292.0" text-anchor="middle" font-size="15" font-weight="600" fill="#9ca3af">Limits Service</text>
+<text x="1470.0" y="312.0" text-anchor="middle" font-size="12" font-weight="400" fill="#6b7280">down or slow</text>
+<path d="M440,416 v98 a110.0,16 0 0 0 220,0 v-98" fill="#fff" stroke="#9ca3af" stroke-width="2"/>
+<ellipse cx="550.0" cy="416" rx="110.0" ry="16" fill="#fff" stroke="#9ca3af" stroke-width="2"/>
+<text x="550.0" y="446" text-anchor="middle" font-size="14" font-weight="600" fill="#9ca3af">Accounts DB</text>
+<text x="550" y="520" text-anchor="middle" font-size="12" font-weight="400" fill="#6b7280">never touched</text>
+<polyline points="262,272 438,272" fill="none" stroke="#1f2937" stroke-width="2" marker-end="url(#ahi)" stroke-linejoin="round"/>
+<circle cx="290" cy="272" r="12" fill="#d9372b"/><text x="290" y="276.5" text-anchor="middle" font-size="12.5" font-weight="700" fill="#fff">1</text>
+<text x="350" y="262" text-anchor="middle" font-size="13" font-weight="400" fill="#1f2937">Deposit + JWT</text>
+<polyline points="662,272 788,272" fill="none" stroke="#1f2937" stroke-width="2" marker-end="url(#ahi)" stroke-linejoin="round"/>
+<circle cx="690" cy="272" r="12" fill="#d9372b"/><text x="690" y="276.5" text-anchor="middle" font-size="12.5" font-weight="700" fill="#fff">2</text>
+<polyline points="962,272 1358,272" fill="none" stroke="#d9372b" stroke-dasharray="1 7" stroke-linecap="round" stroke-width="3" marker-end="url(#ahr)" stroke-linejoin="round"/>
+<circle cx="1150" cy="272" r="15" fill="#fff" stroke="#d9372b" stroke-width="3"/><path d="M1144,266 L1156,278 M1156,266 L1144,278" stroke="#d9372b" stroke-width="3.5" stroke-linecap="round"/>
+<circle cx="1010" cy="272" r="12" fill="#d9372b"/><text x="1010" y="276.5" text-anchor="middle" font-size="12.5" font-weight="700" fill="#fff">3</text>
+<text x="1150" y="246" text-anchor="middle" font-size="12.5" font-weight="400" fill="#d9372b">no answer: connect 0.5 s, read 1 s, retry x2</text>
+<polyline points="788,318 662,318" fill="none" stroke="#d9372b" stroke-width="2" marker-end="url(#ahr)" stroke-linejoin="round"/>
+<circle cx="760" cy="318" r="12" fill="#d9372b"/><text x="760" y="322.5" text-anchor="middle" font-size="12.5" font-weight="700" fill="#fff">4</text>
+<text x="725" y="370" text-anchor="middle" font-size="12.5" font-weight="400" fill="#d9372b">refused at once</text>
+<polyline points="438,322 262,322" fill="none" stroke="#d9372b" stroke-width="2" marker-end="url(#ahr)" stroke-linejoin="round"/>
+<circle cx="410" cy="322" r="12" fill="#d9372b"/><text x="410" y="326.5" text-anchor="middle" font-size="12.5" font-weight="700" fill="#fff">5</text>
+<text x="350" y="348" text-anchor="middle" font-size="13" font-weight="600" fill="#d9372b">503, Retry-After: 5</text>
+<text x="890" y="392" text-anchor="middle" font-size="12.5" font-weight="400" fill="#6b7280">after 10 s: 2 trial calls</text>
+<circle cx="790" cy="388" r="12" fill="#6b7280"/><text x="790" y="392.5" text-anchor="middle" font-size="12.5" font-weight="700" fill="#fff">6</text>
+<rect x="1220" y="470" width="720" height="92" rx="10" fill="#f3f4f6" stroke="#d1d5db" stroke-width="1.4"/>
+<text x="1234" y="492" text-anchor="start" font-size="12.5" font-weight="400" fill="#6b7280">Called before the transaction, outside any DB transaction:</text>
+<text x="1234" y="510" text-anchor="start" font-size="12.5" font-weight="400" fill="#6b7280">a slow Limits service never holds a row lock.</text>
+<text x="1234" y="528" text-anchor="start" font-size="12.5" font-weight="400" fill="#6b7280">An over-limit answer is a healthy answer: 422, and the breaker is not affected.</text>
+<text x="60" y="668" text-anchor="start" font-size="12" font-weight="700" fill="#6b7280">WHAT HAPPENS</text>
+<circle cx="72" cy="698" r="12" fill="#d9372b"/><text x="72" y="702.5" text-anchor="middle" font-size="12.5" font-weight="700" fill="#fff">1</text>
+<text x="96" y="702" text-anchor="start" font-size="13.5" font-weight="400" fill="#1f2937">Client sends the deposit with the JWT. The service asks Limits over HTTP before any transaction starts.</text>
+<circle cx="72" cy="732" r="12" fill="#d9372b"/><text x="72" y="736.5" text-anchor="middle" font-size="12.5" font-weight="700" fill="#fff">2</text>
+<text x="96" y="736" text-anchor="start" font-size="13.5" font-weight="400" fill="#1f2937">Limits does not answer: connect timeout 0.5 s, read timeout 1 s, then retry twice, 0.1 s apart. Each failed call counts</text>
+<text x="96" y="753" text-anchor="start" font-size="13.5" font-weight="400" fill="#1f2937">against the breaker.</text>
+<circle cx="72" cy="783" r="12" fill="#d9372b"/><text x="72" y="787.5" text-anchor="middle" font-size="12.5" font-weight="700" fill="#fff">3</text>
+<text x="96" y="787" text-anchor="start" font-size="13.5" font-weight="400" fill="#1f2937">When 50% of the last 10 calls fail (at least 5 calls), the breaker opens for 10 s.</text>
+<circle cx="72" cy="817" r="12" fill="#d9372b"/><text x="72" y="821.5" text-anchor="middle" font-size="12.5" font-weight="700" fill="#fff">4</text>
+<text x="96" y="821" text-anchor="start" font-size="13.5" font-weight="400" fill="#1f2937">While open, calls are refused at once. Limits is not touched, and no thread waits on a timeout.</text>
+<circle cx="72" cy="851" r="12" fill="#d9372b"/><text x="72" y="855.5" text-anchor="middle" font-size="12.5" font-weight="700" fill="#fff">5</text>
+<text x="96" y="855" text-anchor="start" font-size="13.5" font-weight="400" fill="#1f2937">The service fails closed: 503 with Retry-After 5. No transaction started, so nothing changed.</text>
+<circle cx="72" cy="885" r="12" fill="#d9372b"/><text x="72" y="889.5" text-anchor="middle" font-size="12.5" font-weight="700" fill="#fff">6</text>
+<text x="96" y="889" text-anchor="start" font-size="13.5" font-weight="400" fill="#1f2937">After 10 s the breaker lets 2 trial calls through. If they succeed it closes, if not it opens again.</text>
+<rect x="1010" y="650" width="930" height="320" rx="14" fill="#f3f4f6" stroke="#d1d5db" stroke-width="1.5"/>
+<text x="1032" y="678" text-anchor="start" font-size="12" font-weight="700" fill="#6b7280">HOW IT ENDS</text>
+<text x="1032" y="708" text-anchor="start" font-size="13.5" font-weight="700" fill="#1f2937">Client sees</text>
+<text x="1170" y="708" text-anchor="start" font-size="13.5" font-weight="400" fill="#1f2937">503 "Limits check unavailable", Retry-After 5. The message says nothing was changed.</text>
+<text x="1032" y="741" text-anchor="start" font-size="13.5" font-weight="700" fill="#1f2937">Data</text>
+<text x="1170" y="741" text-anchor="start" font-size="13.5" font-weight="400" fill="#1f2937">Unchanged. No balance change, no outbox row, no event.</text>
+<text x="1032" y="774" text-anchor="start" font-size="13.5" font-weight="700" fill="#1f2937">Signal</text>
+<text x="1170" y="774" text-anchor="start" font-size="13.5" font-weight="400" fill="#1f2937">Alert LimitsCircuitBreakerOpen (page, after 30 s). Breaker state is also a metric.</text>
+<text x="1170" y="791" text-anchor="start" font-size="13.5" font-weight="400" fill="#1f2937">HighServerErrorRate if it lasts.</text>
+<text x="1032" y="824" text-anchor="start" font-size="13.5" font-weight="700" fill="#1f2937">Recovery</text>
+<text x="1170" y="824" text-anchor="start" font-size="13.5" font-weight="400" fill="#1f2937">Automatic. The client retries after 5 s. Fix or restart limits-service. Nobody has to clean up data.</text>
+<rect x="60" y="990" width="1880" height="76" rx="14" fill="#1f2937"/>
+<text x="86" y="1018" text-anchor="start" font-size="11.5" font-weight="700" fill="#9ca3af">SAY IT ALOUD</text>
+<text x="86" y="1042" text-anchor="start" font-size="15" font-weight="500" fill="#fff">If Limits does not answer, we refuse the deposit. We fail closed, because money moves only after an explicit yes. Nothing was written, so the client can safely retry.</text>
+</svg>
