@@ -1,0 +1,143 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2000" height="1200" viewBox="0 0 2000 1200" font-family="Inter,'Helvetica Neue',Arial,'Liberation Sans',sans-serif">
+<defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,1 L10,5 L0,9 z" fill="#1f2937"/></marker></defs>
+<rect width="2000" height="1200" fill="#fff"/>
+<text x="60" y="48" text-anchor="start" font-size="24" font-weight="700" fill="#1f2937">Happy path: a deposit, from request to notification</text>
+<text x="60" y="72" text-anchor="start" font-size="14" font-weight="400" fill="#6b7280">accounts-service · transactional outbox, Kafka, idempotent consumer</text>
+<line x1="1560" y1="52" x2="1620" y2="52" stroke="#1f2937" stroke-width="2"/>
+<text x="1630" y="56" text-anchor="start" font-size="12.5" font-weight="400" fill="#6b7280">synchronous</text>
+<line x1="1750" y1="52" x2="1810" y2="52" stroke="#1f2937" stroke-width="3" stroke-dasharray="1 7" stroke-linecap="round"/>
+<text x="1820" y="56" text-anchor="start" font-size="12.5" font-weight="400" fill="#6b7280">asynchronous</text>
+<rect x="440" y="150" width="800" height="500" rx="18" fill="#fdf1c7" stroke="#e0b93c" stroke-width="2" stroke-dasharray="3 6"/>
+<text x="462" y="180" text-anchor="start" font-size="13" font-weight="700" fill="#9a6b00">PRODUCER · accounts-service</text>
+<rect x="1260" y="640" width="330" height="200" rx="18" fill="#dff5e1" stroke="#5fb36a" stroke-width="2" stroke-dasharray="3 6"/>
+<text x="1282" y="670" text-anchor="start" font-size="13" font-weight="700" fill="#2d7a3a">CONSUMER · notifications-service</text>
+<rect x="1400" y="150" width="300" height="230" rx="18" fill="#e8eefc" stroke="#7b8fd6" stroke-width="2" stroke-dasharray="3 6"/>
+<text x="1422" y="180" text-anchor="start" font-size="13" font-weight="700" fill="#3b4fa8">LIMITS · limits-service</text>
+<rect x="60" y="100" width="200" height="64" rx="12" fill="#fff" stroke="#1f2937" stroke-width="2"/>
+<text x="160.0" y="137.0" text-anchor="middle" font-size="15" font-weight="600" fill="#1f2937">Keycloak</text>
+<rect x="60" y="240" width="200" height="80" rx="12" fill="#fff" stroke="#1f2937" stroke-width="2"/>
+<text x="160.0" y="277.0" text-anchor="middle" font-size="15" font-weight="600" fill="#1f2937">Client</text>
+<text x="160.0" y="297.0" text-anchor="middle" font-size="12" font-weight="400" fill="#6b7280">deposit $100</text>
+<polyline points="100,166 100,238" fill="none" stroke="#1f2937" stroke-width="2" marker-end="url(#ah)" stroke-linejoin="round"/>
+<circle cx="100" cy="203" r="12" fill="#d9372b"/><text x="100" y="207.5" text-anchor="middle" font-size="12.5" font-weight="700" fill="#fff">2</text>
+<text x="118" y="207" text-anchor="start" font-size="13" font-weight="400" fill="#1f2937">JWT</text>
+<polyline points="220,238 220,166" fill="none" stroke="#1f2937" stroke-width="2" marker-end="url(#ah)" stroke-linejoin="round"/>
+<circle cx="220" cy="203" r="12" fill="#d9372b"/><text x="220" y="207.5" text-anchor="middle" font-size="12.5" font-weight="700" fill="#fff">1</text>
+<text x="238" y="199" text-anchor="start" font-size="13" font-weight="600" fill="#1f2937">Login</text>
+<text x="238" y="216" text-anchor="start" font-size="12" font-weight="400" fill="#6b7280">username + password</text>
+<text x="640" y="228" text-anchor="middle" font-size="12" font-weight="600" fill="#2d7a3a">validates the JWT locally (cached Keycloak keys)</text>
+<rect x="520" y="240" width="240" height="90" rx="12" fill="#fff" stroke="#1f2937" stroke-width="2"/>
+<text x="640.0" y="290.0" text-anchor="middle" font-size="15" font-weight="600" fill="#1f2937">Accounts Service</text>
+<polyline points="262,276 518,276" fill="none" stroke="#1f2937" stroke-width="2" marker-end="url(#ah)" stroke-linejoin="round"/>
+<circle cx="285" cy="276" r="12" fill="#d9372b"/><text x="285" y="280.5" text-anchor="middle" font-size="12.5" font-weight="700" fill="#fff">3</text>
+<text x="360" y="258" text-anchor="middle" font-size="13" font-weight="400" fill="#1f2937">Deposit $100 + JWT</text>
+<polyline points="518,306 262,306" fill="none" stroke="#1f2937" stroke-width="2" marker-end="url(#ah)" stroke-linejoin="round"/>
+<circle cx="285" cy="306" r="12" fill="#d9372b"/><text x="285" y="310.5" text-anchor="middle" font-size="12.5" font-weight="700" fill="#fff">7</text>
+<text x="360" y="328" text-anchor="middle" font-size="13" font-weight="400" fill="#1f2937">201 Created</text>
+<rect x="880" y="232" width="170" height="106" rx="12" fill="#fff" stroke="#1f2937" stroke-width="2" stroke-dasharray="7 5"/>
+<text x="965.0" y="282.0" text-anchor="middle" font-size="14" font-weight="600" fill="#1f2937">Circuit breaker</text>
+<text x="965.0" y="302.0" text-anchor="middle" font-size="12" font-weight="400" fill="#6b7280">limits, timeouts</text>
+<rect x="1440" y="240" width="220" height="90" rx="12" fill="#fff" stroke="#1f2937" stroke-width="2"/>
+<text x="1550.0" y="282.0" text-anchor="middle" font-size="15" font-weight="600" fill="#1f2937">Limits Service</text>
+<text x="1550.0" y="302.0" text-anchor="middle" font-size="12" font-weight="400" fill="#6b7280">owns the limit rules</text>
+<polyline points="762,276 878,276" fill="none" stroke="#1f2937" stroke-width="2" marker-end="url(#ah)" stroke-linejoin="round"/>
+<circle cx="800" cy="276" r="12" fill="#d9372b"/><text x="800" y="280.5" text-anchor="middle" font-size="12.5" font-weight="700" fill="#fff">4</text>
+<polyline points="1052,276 1438,276" fill="none" stroke="#1f2937" stroke-width="2" marker-end="url(#ah)" stroke-linejoin="round"/>
+<text x="1320" y="266" text-anchor="middle" font-size="13" font-weight="400" fill="#1f2937">validate limit (HTTP)</text>
+<polyline points="1438,306 1052,306" fill="none" stroke="#1f2937" stroke-width="2" marker-end="url(#ah)" stroke-linejoin="round"/>
+<circle cx="1412" cy="306" r="12" fill="#d9372b"/><text x="1412" y="310.5" text-anchor="middle" font-size="12.5" font-weight="700" fill="#fff">5</text>
+<text x="1320" y="328" text-anchor="middle" font-size="13" font-weight="400" fill="#1f2937">valid / over limit</text>
+<polyline points="878,306 762,306" fill="none" stroke="#1f2937" stroke-width="2" marker-end="url(#ah)" stroke-linejoin="round"/>
+<rect x="455" y="385" width="350" height="240" rx="14" fill="#fff8e1" stroke="#d9372b" stroke-width="1.8" stroke-dasharray="6 4"/>
+<path d="M480,436 v118 a140.0,16 0 0 0 280,0 v-118" fill="#fff" stroke="#1f2937" stroke-width="2"/>
+<ellipse cx="620.0" cy="436" rx="140.0" ry="16" fill="#fff" stroke="#1f2937" stroke-width="2"/>
+<text x="620.0" y="466" text-anchor="middle" font-size="14" font-weight="600" fill="#1f2937">Accounts DB</text>
+<rect x="500" y="490" width="120" height="40" rx="7" fill="#fff" stroke="#1f2937" stroke-width="1.4"/>
+<text x="560.0" y="514.5" text-anchor="middle" font-size="12.5" font-weight="400" fill="#1f2937">accounts</text>
+<rect x="630" y="490" width="118" height="40" rx="7" fill="#f1e8ff" stroke="#1f2937" stroke-width="1.4"/>
+<text x="689.0" y="514.5" text-anchor="middle" font-size="12.5" font-weight="400" fill="#1f2937">outbox-events</text>
+<text x="630" y="600" text-anchor="middle" font-size="11.5" font-weight="700" fill="#d9372b">ONE TRANSACTION: balance + outbox row</text>
+<polyline points="700,332 700,418" fill="none" stroke="#1f2937" stroke-width="2" marker-end="url(#ah)" stroke-linejoin="round"/>
+<circle cx="720" cy="376" r="12" fill="#d9372b"/><text x="720" y="380.5" text-anchor="middle" font-size="12.5" font-weight="700" fill="#fff">6</text>
+<rect x="960" y="470" width="130" height="70" rx="12" fill="#e5dbff" stroke="#6d4fd1" stroke-width="2"/>
+<text x="1025.0" y="510.0" text-anchor="middle" font-size="15" font-weight="600" fill="#1f2937">Relay</text>
+<polyline points="958,490 762,490" fill="none" stroke="#1f2937" stroke-dasharray="1 7" stroke-linecap="round" stroke-width="3" marker-end="url(#ah)" stroke-linejoin="round"/>
+<circle cx="880" cy="474" r="12" fill="#d9372b"/><text x="880" y="478.5" text-anchor="middle" font-size="12.5" font-weight="700" fill="#fff">8</text>
+<polyline points="958,522 762,522" fill="none" stroke="#1f2937" stroke-dasharray="1 7" stroke-linecap="round" stroke-width="3" marker-end="url(#ah)" stroke-linejoin="round"/>
+<circle cx="880" cy="538" r="12" fill="#d9372b"/><text x="880" y="542.5" text-anchor="middle" font-size="12.5" font-weight="700" fill="#fff">10</text>
+<text x="880" y="562" text-anchor="middle" font-size="12.5" font-weight="400" fill="#6b7280">mark published</text>
+<polyline points="1025,542 1025,698" fill="none" stroke="#1f2937" stroke-dasharray="1 7" stroke-linecap="round" stroke-width="3" marker-end="url(#ah)" stroke-linejoin="round"/>
+<circle cx="1045" cy="620" r="12" fill="#d9372b"/><text x="1045" y="624.5" text-anchor="middle" font-size="12.5" font-weight="700" fill="#fff">9</text>
+<rect x="930" y="700" width="190" height="80" rx="12" fill="#cfe6ff" stroke="#2b6cb0" stroke-width="2"/>
+<text x="1025.0" y="745.0" text-anchor="middle" font-size="15" font-weight="600" fill="#1f2937">Kafka</text>
+<text x="1025" y="806" text-anchor="middle" font-size="13" font-weight="600" fill="#b42318">topic: accounts.events</text>
+<text x="1025" y="824" text-anchor="middle" font-size="12.5" font-weight="400" fill="#b42318">key: account id (keeps order per account)</text>
+<rect x="1310" y="700" width="230" height="80" rx="12" fill="#fff" stroke="#1f2937" stroke-width="2"/>
+<text x="1425.0" y="745.0" text-anchor="middle" font-size="15" font-weight="600" fill="#1f2937">Notifications Service</text>
+<polyline points="1308,740 1122,740" fill="none" stroke="#1f2937" stroke-dasharray="1 7" stroke-linecap="round" stroke-width="3" marker-end="url(#ah)" stroke-linejoin="round"/>
+<circle cx="1215" cy="720" r="12" fill="#d9372b"/><text x="1215" y="724.5" text-anchor="middle" font-size="12.5" font-weight="700" fill="#fff">11</text>
+<text x="1215" y="764" text-anchor="middle" font-size="12.5" font-weight="400" fill="#6b7280">poll</text>
+<polygon points="1830,655 1945,740 1830,825 1715,740" fill="#fff" stroke="#1f2937" stroke-width="2"/>
+<text x="1830" y="734" text-anchor="middle" font-size="14" font-weight="600" fill="#1f2937">event already</text>
+<text x="1830" y="754" text-anchor="middle" font-size="14" font-weight="600" fill="#1f2937">processed?</text>
+<polyline points="1542,740 1713,740" fill="none" stroke="#1f2937" stroke-width="2" marker-end="url(#ah)" stroke-linejoin="round"/>
+<text x="1646" y="730" text-anchor="middle" font-size="13" font-weight="400" fill="#1f2937">dedupe</text>
+<polyline points="1830,653 1830,592" fill="none" stroke="#1f2937" stroke-width="2" marker-end="url(#ah)" stroke-linejoin="round"/>
+<text x="1850" y="650" text-anchor="start" font-size="13" font-weight="600" fill="#1f2937">yes</text>
+<rect x="1730" y="520" width="200" height="66" rx="12" fill="#fff" stroke="#d9372b" stroke-width="2"/>
+<text x="1830.0" y="550.0" text-anchor="middle" font-size="15" font-weight="600" fill="#1f2937">Skip</text>
+<text x="1830.0" y="570.0" text-anchor="middle" font-size="12" font-weight="400" fill="#6b7280">commit offset anyway</text>
+<path d="M1280,936 v98 a125.0,16 0 0 0 250,0 v-98" fill="#fff" stroke="#1f2937" stroke-width="2"/>
+<ellipse cx="1405.0" cy="936" rx="125.0" ry="16" fill="#fff" stroke="#1f2937" stroke-width="2"/>
+<text x="1405.0" y="966" text-anchor="middle" font-size="14" font-weight="600" fill="#1f2937">Notifications DB</text>
+<rect x="1295" y="980" width="100" height="40" rx="7" fill="#fff" stroke="#1f2937" stroke-width="1.4"/>
+<text x="1345.0" y="1004.5" text-anchor="middle" font-size="12.5" font-weight="400" fill="#1f2937">notifications</text>
+<rect x="1405" y="980" width="115" height="40" rx="7" fill="#f1e8ff" stroke="#1f2937" stroke-width="1.4"/>
+<text x="1462.5" y="1004.5" text-anchor="middle" font-size="12.5" font-weight="400" fill="#1f2937">processed-events</text>
+<polyline points="1425,782 1425,918" fill="none" stroke="#1f2937" stroke-width="2" marker-end="url(#ah)" stroke-linejoin="round"/>
+<text x="1440" y="884" text-anchor="start" font-size="12.5" font-weight="400" fill="#6b7280">check processed events</text>
+<polyline points="1830,827 1830,985 1532,985" fill="none" stroke="#1f2937" stroke-width="2" marker-end="url(#ah)" stroke-linejoin="round"/>
+<text x="1850" y="880" text-anchor="start" font-size="13" font-weight="600" fill="#1f2937">no</text>
+<circle cx="1690" cy="985" r="12" fill="#d9372b"/><text x="1690" y="989.5" text-anchor="middle" font-size="12.5" font-weight="700" fill="#fff">12</text>
+<text x="1690" y="1014" text-anchor="middle" font-size="12.5" font-weight="400" fill="#6b7280">save, mark processed, commit offset</text>
+<text x="60" y="690" text-anchor="start" font-size="12" font-weight="700" fill="#6b7280">HOW TO READ IT</text>
+<circle cx="72" cy="722" r="12" fill="#d9372b"/><text x="72" y="726.5" text-anchor="middle" font-size="12.5" font-weight="700" fill="#fff">1</text>
+<text x="92" y="726" text-anchor="start" font-size="13" font-weight="400" fill="#1f2937">Client logs in to Keycloak</text>
+<circle cx="72" cy="772" r="12" fill="#d9372b"/><text x="72" y="776.5" text-anchor="middle" font-size="12.5" font-weight="700" fill="#fff">2</text>
+<text x="92" y="776" text-anchor="start" font-size="13" font-weight="400" fill="#1f2937">Keycloak returns a JWT</text>
+<circle cx="72" cy="822" r="12" fill="#d9372b"/><text x="72" y="826.5" text-anchor="middle" font-size="12.5" font-weight="700" fill="#fff">3</text>
+<text x="92" y="826" text-anchor="start" font-size="13" font-weight="400" fill="#1f2937">Client sends the deposit with the JWT</text>
+<circle cx="72" cy="872" r="12" fill="#d9372b"/><text x="72" y="876.5" text-anchor="middle" font-size="12.5" font-weight="700" fill="#fff">4</text>
+<text x="92" y="876" text-anchor="start" font-size="13" font-weight="400" fill="#1f2937">Service asks Limits Service over HTTP (circuit</text>
+<text x="92" y="893" text-anchor="start" font-size="13" font-weight="400" fill="#1f2937">breaker, timeout)</text>
+<circle cx="72" cy="922" r="12" fill="#d9372b"/><text x="72" y="926.5" text-anchor="middle" font-size="12.5" font-weight="700" fill="#fff">5</text>
+<text x="92" y="926" text-anchor="start" font-size="13" font-weight="400" fill="#1f2937">Limits answers: valid or over limit</text>
+<circle cx="72" cy="972" r="12" fill="#d9372b"/><text x="72" y="976.5" text-anchor="middle" font-size="12.5" font-weight="700" fill="#fff">6</text>
+<text x="92" y="976" text-anchor="start" font-size="13" font-weight="400" fill="#1f2937">One transaction: update balance, insert outbox row</text>
+<circle cx="472" cy="722" r="12" fill="#d9372b"/><text x="472" y="726.5" text-anchor="middle" font-size="12.5" font-weight="700" fill="#fff">7</text>
+<text x="492" y="726" text-anchor="start" font-size="13" font-weight="400" fill="#1f2937">Client gets 201 Created, before any Kafka work</text>
+<circle cx="472" cy="772" r="12" fill="#d9372b"/><text x="472" y="776.5" text-anchor="middle" font-size="12.5" font-weight="700" fill="#fff">8</text>
+<text x="492" y="776" text-anchor="start" font-size="13" font-weight="400" fill="#1f2937">Relay polls unpublished outbox rows</text>
+<circle cx="472" cy="822" r="12" fill="#d9372b"/><text x="472" y="826.5" text-anchor="middle" font-size="12.5" font-weight="700" fill="#fff">9</text>
+<text x="492" y="826" text-anchor="start" font-size="13" font-weight="400" fill="#1f2937">Relay publishes to Kafka and waits for the ack</text>
+<circle cx="472" cy="872" r="12" fill="#d9372b"/><text x="472" y="876.5" text-anchor="middle" font-size="12.5" font-weight="700" fill="#fff">10</text>
+<text x="492" y="876" text-anchor="start" font-size="13" font-weight="400" fill="#1f2937">Relay marks those rows published</text>
+<circle cx="472" cy="922" r="12" fill="#d9372b"/><text x="472" y="926.5" text-anchor="middle" font-size="12.5" font-weight="700" fill="#fff">11</text>
+<text x="492" y="926" text-anchor="start" font-size="13" font-weight="400" fill="#1f2937">Notifications polls Kafka</text>
+<circle cx="472" cy="972" r="12" fill="#d9372b"/><text x="472" y="976.5" text-anchor="middle" font-size="12.5" font-weight="700" fill="#fff">12</text>
+<text x="492" y="976" text-anchor="start" font-size="13" font-weight="400" fill="#1f2937">New event: save, mark processed, commit offset.</text>
+<text x="492" y="993" text-anchor="start" font-size="13" font-weight="400" fill="#1f2937">Duplicate: commit and skip</text>
+<text x="60" y="1090" text-anchor="start" font-size="12" font-weight="700" fill="#6b7280">WHAT THE DESIGN GUARANTEES</text>
+<rect x="60" y="1102" width="440" height="70" rx="12" fill="#f3f4f6" stroke="#d1d5db" stroke-width="1.5"/>
+<text x="80" y="1130" text-anchor="start" font-size="14.5" font-weight="700" fill="#1f2937">Atomic write</text>
+<text x="80" y="1152" text-anchor="start" font-size="13" font-weight="400" fill="#6b7280">Balance and event commit together, or not at all</text>
+<rect x="530" y="1102" width="440" height="70" rx="12" fill="#f3f4f6" stroke="#d1d5db" stroke-width="1.5"/>
+<text x="550" y="1130" text-anchor="start" font-size="14.5" font-weight="700" fill="#1f2937">At-least-once delivery</text>
+<text x="550" y="1152" text-anchor="start" font-size="13" font-weight="400" fill="#6b7280">Relay retries until Kafka acks</text>
+<rect x="1000" y="1102" width="440" height="70" rx="12" fill="#f3f4f6" stroke="#d1d5db" stroke-width="1.5"/>
+<text x="1020" y="1130" text-anchor="start" font-size="14.5" font-weight="700" fill="#1f2937">Idempotent consumer</text>
+<text x="1020" y="1152" text-anchor="start" font-size="13" font-weight="400" fill="#6b7280">Duplicates are skipped by event id</text>
+<rect x="1470" y="1102" width="440" height="70" rx="12" fill="#f3f4f6" stroke="#d1d5db" stroke-width="1.5"/>
+<text x="1490" y="1130" text-anchor="start" font-size="14.5" font-weight="700" fill="#1f2937">Order per account</text>
+<text x="1490" y="1152" text-anchor="start" font-size="13" font-weight="400" fill="#6b7280">Key is the account id, one relay at a time</text>
+</svg>
