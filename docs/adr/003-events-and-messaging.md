@@ -85,6 +85,13 @@ We also have to decide what a consumer does with a duplicate, an out-of-order ev
 - **A refused event is not replayed as it is.** By the time someone looks at it, newer events were applied, so replaying
   the same message is refused again. Recovery is a decision: accept that the older fact is superseded, or rebuild the
   affected account by resetting the consumer group offset (runbook still to be written).
+- **The dead-letter topic and the order guard work against each other.** If event 7 of an account is dead-lettered (for
+  example a processing error after the retries) and event 8 is applied, the guard remembers 8, so a replay of 7 is
+  refused as old. For a consumer that keeps state from the event (a read model that adds deposit amounts), that leaves the
+  state wrong. Such a consumer needs a gapless per-account version (a version column on the account row, not the shared
+  outbox id), applies only `last + 1`, and holds later events until the gap closes. Our notifications consumer does not
+  keep a balance, and deposit and withdrawal events carry `balanceAfter`, so a late event is superseded and the
+  current guard is enough for it. Any future read model must use the gapless approach. (Raised by a reader on LinkedIn.)
 - **A dead-lettered message loses its place in the order.** Later events for the same key are processed while it
   waits. Whether that is acceptable depends on the data; for money it needs an ordered recovery process.
 - **Published outbox rows are never deleted yet.** The table only grows. A cleanup job is needed.
