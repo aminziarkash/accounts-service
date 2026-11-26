@@ -21,6 +21,10 @@ app:
   events:
     topic: accounts.events
 
+logging:
+  pattern:
+    correlation: "[%X{correlationId:-}] "
+
 server:
   port: 8090
 

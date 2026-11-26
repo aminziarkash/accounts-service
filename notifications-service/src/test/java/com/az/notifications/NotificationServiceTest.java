@@ -12,9 +12,15 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
+import ch.qos.logback.classic.Logger;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
@@ -33,6 +39,18 @@ class NotificationServiceTest {
             """
             {"transferReference":"6f0c3b0e-5a52-4d65-9b57-0d6c6c2a1f11","fromAccountId":7,\
             "toAccountId":9,"amount":40.00,"currency":"USD","occurredAt":"2026-11-15T15:30:00Z"}""";
+
+    private static final String DEPOSIT_V2 =
+            """
+            {"accountId":3,"ledgerEntryId":6,"amount":50.00,"currency":"USD",\
+            "balanceAfter":150.00,"occurredAt":"2026-11-15T15:27:30Z",\
+            "correlationId":"req-42","schemaVersion":2}""";
+
+    private static final String DEPOSIT_FROM_THE_FUTURE =
+            """
+            {"accountId":3,"ledgerEntryId":7,"amount":10.00,"currency":"USD",\
+            "balanceAfter":160.00,"occurredAt":"2026-11-15T15:28:30Z",\
+            "correlationId":"req-43","schemaVersion":3,"channel":"MOBILE","tags":["a","b"]}""";
 
     @Autowired NotificationService service;
     @Autowired NotificationRepository notifications;
@@ -208,5 +226,48 @@ class NotificationServiceTest {
         service.handle(UUID.randomUUID(), "MONEY_DEPOSITED", DEPOSIT, "3", null);
 
         assertThat(notifications.count()).isEqualTo(1);
+    }
+
+    @Test
+    void aVersion1DepositWithoutTheNewFieldsIsStillHandled() {
+        service.handle(UUID.randomUUID(), "MONEY_DEPOSITED", DEPOSIT);
+
+        assertThat(notifications.count()).isEqualTo(1);
+    }
+
+    @Test
+    void aVersion2DepositIsHandled() {
+        service.handle(UUID.randomUUID(), "MONEY_DEPOSITED", DEPOSIT_V2);
+
+        assertThat(notifications.count()).isEqualTo(1);
+    }
+
+    @Test
+    void aFutureVersionWithFieldsWeDoNotKnowIsStillHandled() {
+        service.handle(UUID.randomUUID(), "MONEY_DEPOSITED", DEPOSIT_FROM_THE_FUTURE);
+
+        assertThat(notifications.count()).isEqualTo(1);
+    }
+
+    @Test
+    void theCorrelationIdIsInTheLogsWhileHandlingAndGoneAfterwards() {
+        Logger logger = (Logger) LoggerFactory.getLogger(NotificationService.class);
+        ListAppender<ILoggingEvent> appender = new ListAppender<>();
+        appender.start();
+        logger.addAppender(appender);
+        try {
+            // an unknown type logs a warning, which gives us a log line to inspect
+            service.handle(UUID.randomUUID(), "SOMETHING_NEW", DEPOSIT_V2);
+
+            assertThat(appender.list)
+                    .anySatisfy(
+                            e -> {
+                                assertThat(e.getFormattedMessage()).contains("Unknown event type");
+                                assertThat(e.getMDCPropertyMap()).containsEntry("correlationId", "req-42");
+                            });
+            assertThat(MDC.get("correlationId")).isNull(); // threads are reused: nothing left behind
+        } finally {
+            logger.detachAppender(appender);
+        }
     }
 }
