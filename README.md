@@ -209,9 +209,11 @@ Someone else's customer or account answers `404`, the same as an id that does no
 You can send money to anyone's account, but only out of your own.
 Events use the transactional outbox pattern. A deposit, withdrawal or transfer saves an `outbox_events` row in the same
 transaction as the ledger entries, so an event exists exactly when the money moved. A scheduled relay reads unpublished
-rows with `SELECT ... FOR UPDATE SKIP LOCKED` (so several instances never publish the same row), sends them to Kafka in
-order, waits for the broker to confirm and marks them published. If Kafka is down the API keeps working and the events
-wait in the table. Event ids travel as a Kafka header so consumers can ignore duplicates.
+rows with `SELECT ... FOR UPDATE SKIP LOCKED` while holding a Postgres advisory lock (so only one relay publishes at a
+time and the order per account is kept), sends them to Kafka in order, waits for the broker to confirm and marks them
+published. If Kafka is down the API keeps working and the events
+wait in the table. Event ids travel as a Kafka header so consumers can ignore duplicates, and a sequence header (
+`event-seq`) lets the consumer refuse an event older than one it already applied.
 `notifications-service` reads the topic in a consumer group and commits offsets after processing, so a crash causes a
 redelivery, never a loss. Its handler records the event id in `processed_events` (`insert ... on conflict do nothing`)
 and
@@ -260,11 +262,11 @@ The decisions behind these are in [ADR-003](docs/adr/003-events-and-messaging.md
 
 ### Event contract
 
-| Event type           | Written by | Key               | Headers                  |
-|----------------------|------------|-------------------|--------------------------|
-| `MONEY_DEPOSITED`    | deposit    | account id        | `event-id`, `event-type` |
-| `MONEY_WITHDRAWN`    | withdrawal | account id        | `event-id`, `event-type` |
-| `TRANSFER_COMPLETED` | transfer   | source account id | `event-id`, `event-type` |
+| Event type           | Written by | Key               | Headers                               |
+|----------------------|------------|-------------------|---------------------------------------|
+| `MONEY_DEPOSITED`    | deposit    | account id        | `event-id`, `event-type`, `event-seq` |
+| `MONEY_WITHDRAWN`    | withdrawal | account id        | `event-id`, `event-type`, `event-seq` |
+| `TRANSFER_COMPLETED` | transfer   | source account id | `event-id`, `event-type`, `event-seq` |
 
 The type strings are a contract: add new types and new fields freely, never rename or remove. Consumers ignore what
 they do not know. A replayed idempotent request writes no second event.
@@ -291,7 +293,8 @@ they do not know. A replayed idempotent request writes no second event.
     - [x] Transactional outbox and Kafka relay
     - [x] `notifications-service` with an idempotent consumer
     - [x] Retries and a dead-letter topic
-- [ ] Failure handling, schema evolution, read model
+- [x] Failure handling: event order, dead letters, replay runbook
+- [ ] Schema evolution, read model
 - [x] Observability: metrics, Prometheus, Grafana, Kafka lag, alert rules
 - [ ] Delivery: tracing, Kubernetes manifests
 
@@ -305,16 +308,16 @@ they do not know. A replayed idempotent request writes no second event.
   never removed. In production it belongs at the gateway, or in a shared store such as Redis.
 - Events are delivered at least once and in order per account, not exactly once. Consumers must ignore duplicates.
 - Only one relay publishes at a time (a Postgres advisory lock), which is what keeps the order per account. Publishing
-  speed
-  is limited to one relay. The consumer also checks order: each event carries a sequence (`event-seq`), and an event
-  older
-  than one already applied for the same account goes to the dead-letter topic. Gaps (a missing event) are not detected.
+  speed is limited to one relay. The consumer also checks order: each event carries a sequence (`event-seq`), and an
+  event older than one already applied for the same account goes to the dead-letter topic. Gaps (a missing event) are
+  not detected.
 - The relay polls the outbox, so an event can be delayed by up to the poll interval (0.5 seconds by default). Change
   data capture with Debezium would remove the polling, at the cost of running Kafka Connect.
 - Published outbox rows are not deleted yet.
 - There is no Alertmanager locally, so alerts only show in the Prometheus UI. `/actuator/prometheus` is public in the
   API; in production it must be reachable only inside the network or on a management port.
-- Messages in the dead-letter topic are not replayed automatically; someone has to look at them.
+- Messages in the dead-letter topic are not replayed automatically; someone has to look at them. The steps are in
+  [the replay runbook](docs/runbook-event-replay.md).
 - While limits-service cannot answer, every deposit, withdrawal and transfer is refused (fail closed). Reads are
   unaffected. Deposits could fail open, but that is a business decision (ADR-004).
 - The circuit breaker is per instance and its state is lost on restart. Its thresholds are untuned guesses until there
