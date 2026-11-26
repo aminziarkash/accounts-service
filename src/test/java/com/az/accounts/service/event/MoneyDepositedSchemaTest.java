@@ -8,7 +8,10 @@ import org.junit.jupiter.api.Test;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
-/** The JSON of a MoneyDeposited is a contract. These fields may be added to, never renamed or removed. */
+/**
+ * The JSON of a MoneyDeposited is a contract. These fields may be added to, never renamed or
+ * removed.
+ */
 class MoneyDepositedSchemaTest {
 
     private final JsonMapper mapper = JsonMapper.builder().build();
