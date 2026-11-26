@@ -2,7 +2,8 @@
 
 Banking accounts service built with Spring Boot 4, PostgreSQL and Testcontainers: ledger, safe money movement under
 concurrency, a validated REST API, idempotent money operations, JWT security with Keycloak and reliable events through a
-transactional outbox to Kafka, consumed by a second service, `notifications-service`. Profile reads are cached, and a synchronous call to a third service, `limits-service`, is
+transactional outbox to Kafka, consumed by a second service, `notifications-service`. Profile reads are cached, and a
+synchronous call to a third service, `limits-service`, is
 protected with timeouts, retry and a circuit breaker.
 
 ![CI](https://github.com/aminziarkash/accounts-service/actions/workflows/ci.yml/badge.svg)
@@ -22,8 +23,10 @@ Built:
 - **A clean REST API.** Thin controllers, Bean Validation and one error format (RFC 9457 `ProblemDetail`). Services
   return read models mapped with MapStruct, so entities never reach the web layer. The ledger endpoint caps the page
   size and only sorts by whitelisted fields.
-- **Safe retries.** Deposits, withdrawals and transfers need an `Idempotency-Key`. The key is stored in PostgreSQL in the same transaction as the
-  transfer, so a repeated request returns the first result and money moves once, even for concurrent duplicates. Keys expire
+- **Safe retries.** Deposits, withdrawals and transfers need an `Idempotency-Key`. The key is stored in PostgreSQL in
+  the same transaction as the
+  transfer, so a repeated request returns the first result and money moves once, even for concurrent duplicates. Keys
+  expire
   after 24 hours and a scheduled job deletes them. A key belongs to its caller, so users can send the same header
   value without interfering, and nobody can replay someone else's key.
 - **Rate limiting.** Each caller (the `sub` claim of the token) gets a token bucket for write requests: a burst
@@ -114,7 +117,8 @@ docker exec -it accounts-kafka /opt/kafka/bin/kafka-console-consumer.sh --bootst
 
 Make a deposit with Bruno and the event shows up within a second. The `bruno/events` folder has requests for replays
 and transfers. Stop Kafka, make a deposit, start Kafka again: the API keeps working and the events go out afterwards,
-in order. The relay settings (`batch-size`, `send-timeout`, `poll-interval`) are under `app.outbox` in `application.yaml`.
+in order. The relay settings (`batch-size`, `send-timeout`, `poll-interval`) are under `app.outbox` in
+`application.yaml`.
 
 ### notifications-service
 
@@ -209,7 +213,8 @@ rows with `SELECT ... FOR UPDATE SKIP LOCKED` (so several instances never publis
 order, waits for the broker to confirm and marks them published. If Kafka is down the API keeps working and the events
 wait in the table. Event ids travel as a Kafka header so consumers can ignore duplicates.
 `notifications-service` reads the topic in a consumer group and commits offsets after processing, so a crash causes a
-redelivery, never a loss. Its handler records the event id in `processed_events` (`insert ... on conflict do nothing`) and
+redelivery, never a loss. Its handler records the event id in `processed_events` (`insert ... on conflict do nothing`)
+and
 saves the notification in the same transaction, so a duplicate changes nothing. It reads only the fields it needs and
 ignores the rest (a tolerant reader), so the JSON is the contract and the services share no classes. A failing message
 is retried three times, one second apart, then published to `accounts.events.DLT`; input that can never succeed goes
@@ -222,7 +227,7 @@ flowchart LR
     kc[Keycloak] -. signs tokens .-> client
     api -->|one transaction| pg[(accounts DB: ledger + outbox_events)]
     relay[Outbox relay] -->|SKIP LOCKED batch| pg
-    relay -->|key = account id, acks=all| kafka{{Kafka: accounts.events}}
+    relay -->|key = account id, acks = all| kafka{{Kafka: accounts.events}}
     kafka --> notif[notifications-service]
     notif -->|processed_events + notifications| npg[(notifications DB)]
     notif -. retries exhausted .-> dlt{{accounts.events.DLT}}
@@ -231,6 +236,27 @@ flowchart LR
     exporter[Kafka exporter] -->|consumer lag| prom
     graf[Grafana] --> prom
 ```
+
+### Diagrams
+
+The happy path of a deposit, from request to notification: the balance and the event commit in one transaction (outbox),
+a relay publishes to Kafka at least once, and the consumer skips duplicates.
+
+![Happy path](docs/diagrams/architecture-happy-path.png)
+
+Every gate a request passes, in order, and the status code each one returns when it rejects it:
+
+![Happy path with security layers](docs/diagrams/happy-path-security.png)
+
+What happens, and what the client sees, when something goes wrong:
+
+| Scenario                                                        | Diagram                                             |
+|-----------------------------------------------------------------|-----------------------------------------------------|
+| Kafka is down, the relay cannot publish                         | [PNG](docs/diagrams/scenario-2-kafka-down.png)      |
+| The relay crashes after publishing, the event is sent twice     | [PNG](docs/diagrams/scenario-3-duplicate-event.png) |
+| A message cannot be processed and goes to the dead-letter topic | [PNG](docs/diagrams/scenario-4-dead-letter.png)     |
+
+The decisions behind these are in [ADR-003](docs/adr/003-events-and-messaging.md).
 
 ### Event contract
 
@@ -245,13 +271,13 @@ they do not know. A replayed idempotent request writes no second event.
 
 ## Decisions
 
-| ADR                                     | Decision                                                  | Status   |
-|-----------------------------------------|-----------------------------------------------------------|----------|
-| [001](docs/adr/001-locking-strategy.md) | Pessimistic locking for balances, optimistic for profiles | Accepted |
-| [002](docs/adr/002-caching-policy.md)   | Caching policy: what is cached and what never is          | Accepted |
-| [003](docs/adr/003-events-and-messaging.md) | Outbox, Kafka, idempotent consumer and dead letters    | Accepted |
-| [004](docs/adr/004-resilience.md)       | Timeouts, retry, circuit breaker and failing closed       | Accepted |
-| [005](docs/adr/005-observability.md)    | Observability: what we monitor, alert on and why          | Accepted |
+| ADR                                         | Decision                                                  | Status   |
+|---------------------------------------------|-----------------------------------------------------------|----------|
+| [001](docs/adr/001-locking-strategy.md)     | Pessimistic locking for balances, optimistic for profiles | Accepted |
+| [002](docs/adr/002-caching-policy.md)       | Caching policy: what is cached and what never is          | Accepted |
+| [003](docs/adr/003-events-and-messaging.md) | Outbox, Kafka, idempotent consumer and dead letters       | Accepted |
+| [004](docs/adr/004-resilience.md)           | Timeouts, retry, circuit breaker and failing closed       | Accepted |
+| [005](docs/adr/005-observability.md)        | Observability: what we monitor, alert on and why          | Accepted |
 
 ## Roadmap
 
@@ -262,9 +288,9 @@ they do not know. A replayed idempotent request writes no second event.
 - [x] Caching
 - [x] Resilience: a second service called synchronously, timeouts, retry, circuit breaker, fail closed
 - [x] Event-driven core
-  - [x] Transactional outbox and Kafka relay
-  - [x] `notifications-service` with an idempotent consumer
-  - [x] Retries and a dead-letter topic
+    - [x] Transactional outbox and Kafka relay
+    - [x] `notifications-service` with an idempotent consumer
+    - [x] Retries and a dead-letter topic
 - [ ] Failure handling, schema evolution, read model
 - [x] Observability: metrics, Prometheus, Grafana, Kafka lag, alert rules
 - [ ] Delivery: tracing, Kubernetes manifests
@@ -278,8 +304,10 @@ they do not know. A replayed idempotent request writes no second event.
 - Rate limiting is per instance and in memory. With several instances the limit multiplies, and idle buckets are
   never removed. In production it belongs at the gateway, or in a shared store such as Redis.
 - Events are delivered at least once and in order per account, not exactly once. Consumers must ignore duplicates.
-- Only one relay publishes at a time (a Postgres advisory lock), which is what keeps the order per account. Publishing speed
-  is limited to one relay. The consumer also checks order: each event carries a sequence (`event-seq`), and an event older
+- Only one relay publishes at a time (a Postgres advisory lock), which is what keeps the order per account. Publishing
+  speed
+  is limited to one relay. The consumer also checks order: each event carries a sequence (`event-seq`), and an event
+  older
   than one already applied for the same account goes to the dead-letter topic. Gaps (a missing event) are not detected.
 - The relay polls the outbox, so an event can be delayed by up to the poll interval (0.5 seconds by default). Change
   data capture with Debezium would remove the polling, at the cost of running Kafka Connect.
