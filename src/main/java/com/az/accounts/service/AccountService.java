@@ -21,7 +21,6 @@ import com.az.accounts.service.view.ViewMapper;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
-
 import org.slf4j.MDC;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
