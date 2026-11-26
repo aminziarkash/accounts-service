@@ -11,10 +11,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
+import tools.jackson.databind.json.JsonMapper;
 
 @SpringBootTest
 @Import(TestcontainersConfiguration.class)
@@ -25,6 +27,8 @@ class OutboxIntegrationTest {
     @Autowired AccountService accountService;
 
     @Autowired JdbcTemplate jdbc;
+
+    @Autowired JsonMapper mapper;
 
     private Long newAccount() {
         var customer =
@@ -122,5 +126,33 @@ class OutboxIntegrationTest {
                                 + " and aggregate_id = ?",
                         String.valueOf(from));
         assertThat(rows).isEmpty();
+    }
+
+    @Test
+    void aDepositRecordsTheCorrelationIdOfTheRequest() {
+        Long accountId = newAccount();
+        MDC.put("correlationId", "req-42");
+        try {
+            accountService.deposit(accountId, new BigDecimal("25.00"));
+        } finally {
+            MDC.remove("correlationId");
+        }
+
+        var payload = mapper.readTree(eventsFor(accountId).get(0).get("payload").toString());
+
+        assertThat(payload.get("correlationId").textValue()).isEqualTo("req-42");
+        assertThat(payload.get("schemaVersion").intValue()).isEqualTo(2);
+    }
+
+    @Test
+    void aDepositWithoutARequestHasNoCorrelationId() {
+        Long accountId = newAccount();
+
+        accountService.deposit(accountId, new BigDecimal("25.00"));
+
+        var payload = mapper.readTree(eventsFor(accountId).get(0).get("payload").toString());
+
+        assertThat(payload.get("correlationId").isNull()).isTrue();
+        assertThat(payload.get("schemaVersion").intValue()).isEqualTo(2);
     }
 }
